@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PulsePilot Health Optimizer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <header class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">PulsePilot</p>
+        <h1>Your Garmin, nutrition, lifting, and recovery coach in one place.</h1>
+        <p class="lede">
+          Designed for a Garmin Fenix 7 Sapphire Solar workflow, with nutrition insight from MyFitnessPal and workout intelligence from FitNotes.
+        </p>
+        <div class="hero-actions">
+          <a href="#today" class="button primary">View Dashboard</a>
+          <a href="#architecture" class="button ghost">See System Design</a>
+        </div>
+      </div>
+      <section class="device-panel">
+        <div class="status-bar">
+          <span>Connected</span>
+          <strong>Garmin + MyFitnessPal + FitNotes</strong>
+        </div>
+        <div class="score-ring">
+          <div class="score-ring__inner">
+            <span>82</span>
+            <small>Readiness</small>
+          </div>
+        </div>
+        <div class="mini-grid">
+          <article>
+            <span>Sleep</span>
+            <strong>7h 42m</strong>
+          </article>
+          <article>
+            <span>Stress</span>
+            <strong>Low</strong>
+          </article>
+          <article>
+            <span>Calories</span>
+            <strong>2,180 / 2,450</strong>
+          </article>
+          <article>
+            <span>Water</span>
+            <strong>56 / 96 oz</strong>
+          </article>
+        </div>
+      </section>
+    </header>
+
+    <main>
+      <section id="today" class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Today</p>
+          <h2>Daily optimization dashboard</h2>
+        </div>
+        <div class="dashboard-grid">
+          <article class="card highlight">
+            <div class="card-head">
+              <h3>Goal Engine</h3>
+              <label class="goal-picker">
+                <span>Active goal</span>
+                <select id="goal-select">
+                  <option value="strength">Strength</option>
+                  <option value="hypertrophy">Muscle Building</option>
+                  <option value="endurance">Endurance</option>
+                  <option value="fatloss">Weight Loss</option>
+                  <option value="flexibility">Flexibility</option>
+                </select>
+              </label>
+            </div>
+            <p id="goal-summary">
+              Prioritize heavy compound lifts, stable protein intake, and longer recovery between high-output sessions.
+            </p>
+            <div class="pill-row" id="goal-pills">
+              <span class="pill">Heavy top sets</span>
+              <span class="pill">Protein forward</span>
+              <span class="pill">Manage fatigue</span>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <h3>Garmin Recovery Read</h3>
+              <span class="tag ok">On track</span>
+            </div>
+            <ul class="metric-list">
+              <li><span>Body Battery</span><strong>78 / 100</strong></li>
+              <li><span>Resting HR</span><strong>51 bpm</strong></li>
+              <li><span>Respiration</span><strong>13 brpm</strong></li>
+              <li><span>Pulse Ox</span><strong>97%</strong></li>
+            </ul>
+            <p class="note">Coach action: keep today as a productive session, but avoid adding extra fatigue on top of your main lower-body work.</p>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <h3>Nutrition Sync</h3>
+              <span class="tag">MyFitnessPal</span>
+            </div>
+            <ul class="metric-list">
+              <li><span>Weight</span><strong>198.6 lb</strong></li>
+              <li><span>7-day trend</span><strong>-0.4 lb</strong></li>
+              <li><span>Protein</span><strong>154 g</strong></li>
+              <li><span>Remaining calories</span><strong>270 kcal</strong></li>
+            </ul>
+            <p class="note">Suggested prep: chicken, rice, Greek yogurt, oats, berries, eggs.</p>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <h3>Hydration Coach</h3>
+              <span class="tag warn">Prompt at 1:00 PM</span>
+            </div>
+            <p>Have you had water today?</p>
+            <div class="button-row">
+              <button class="button primary small" id="water-no">No</button>
+              <button class="button ghost small" id="water-yes">Yes</button>
+            </div>
+            <div id="hydration-output" class="response-box">
+              If you are behind pace, the app will calculate your remaining water target, give you a finish window, and re-prompt 4 hours later.
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Training</p>
+          <h2>Workout intelligence from FitNotes history</h2>
+        </div>
+        <div class="training-grid">
+          <article class="card tall">
+            <div class="card-head">
+              <h3>Weekly Split Analyzer</h3>
+              <span class="tag">FitNotes import</span>
+            </div>
+            <div class="calendar">
+              <div><span>Mon</span><strong>Chest + Triceps</strong></div>
+              <div><span>Tue</span><strong>Back + Biceps</strong></div>
+              <div><span>Wed</span><strong>Legs</strong></div>
+              <div><span>Thu</span><strong>Shoulders</strong></div>
+              <div><span>Fri</span><strong>Arms + Chest</strong></div>
+              <div><span>Sat</span><strong>Conditioning</strong></div>
+              <div><span>Sun</span><strong>Recovery</strong></div>
+            </div>
+          </article>
+
+          <article class="card tall">
+            <div class="card-head">
+              <h3>Suggested Changes</h3>
+              <span class="tag accent">Coach logic</span>
+            </div>
+            <div class="suggestion-list">
+              <article>
+                <strong>Move Romanian Deadlift to Tuesday</strong>
+                <p>Posterior-chain fatigue is stacked too heavily against Wednesday leg volume.</p>
+              </article>
+              <article>
+                <strong>Swap Front Raises for Cable Lateral Raises</strong>
+                <p>Anterior delts are already covered by incline press and overhead press.</p>
+              </article>
+              <article>
+                <strong>Increase Barbell Row to 195 lb x 8 target</strong>
+                <p>You have progressed two straight weeks without a recovery drop.</p>
+              </article>
+            </div>
+          </article>
+
+          <article class="card wide">
+            <div class="card-head">
+              <h3>Exercise Intelligence</h3>
+              <span class="tag">Knowledge layer</span>
+            </div>
+            <div class="exercise-sheet">
+              <div>
+                <span class="label">Exercise</span>
+                <strong>Romanian Deadlift</strong>
+              </div>
+              <div>
+                <span class="label">Primary muscles</span>
+                <strong>Hamstrings, glutes</strong>
+              </div>
+              <div>
+                <span class="label">Secondary muscles</span>
+                <strong>Spinal erectors, forearms, adductors</strong>
+              </div>
+              <div>
+                <span class="label">Pattern</span>
+                <strong>Hip hinge</strong>
+              </div>
+              <div>
+                <span class="label">Why it matters</span>
+                <strong>Builds posterior-chain strength and high eccentric hamstring load.</strong>
+              </div>
+              <div>
+                <span class="label">Good substitutes</span>
+                <strong>Good morning, 45-degree back extension, cable pull-through</strong>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Check-Ins</p>
+          <h2>Weekly strength pulse at the start and end of the week</h2>
+        </div>
+        <div class="dashboard-grid">
+          <article class="card">
+            <div class="card-head">
+              <h3>Weekly Strength Check-In</h3>
+              <span class="tag accent">Adaptive coaching</span>
+            </div>
+            <p>Compared to last week, do you feel like you are getting stronger?</p>
+            <div class="button-row">
+              <button class="button ghost small weekly-check" data-checkin="stronger">Getting stronger</button>
+              <button class="button ghost small weekly-check" data-checkin="same">Staying the same</button>
+              <button class="button ghost small weekly-check" data-checkin="weaker">Getting weaker</button>
+            </div>
+            <div id="weekly-output" class="response-box">
+              Your answer helps the app decide whether to push progression, hold steady, or reduce fatigue.
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <h3>How It Changes Your Plan</h3>
+              <span class="tag">Decision logic</span>
+            </div>
+            <div class="suggestion-list">
+              <article>
+                <strong>If you feel stronger</strong>
+                <p>Keep the current split, consider small load increases, and preserve the exercises that are clearly working.</p>
+              </article>
+              <article>
+                <strong>If you feel the same</strong>
+                <p>Check weekly volume, rep progression, and exercise redundancy before making a moderate tweak.</p>
+              </article>
+              <article>
+                <strong>If you feel weaker</strong>
+                <p>Look for recovery issues, excessive overlap, low calories, or repeated regressions before cutting load or volume.</p>
+              </article>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Nutrition</p>
+          <h2>Meal prep built around your actual foods</h2>
+        </div>
+        <div class="nutrition-grid">
+          <article class="card">
+            <div class="card-head">
+              <h3>Daily Target</h3>
+              <span class="tag">Adaptive</span>
+            </div>
+            <ul class="metric-list">
+              <li><span>Calories</span><strong>2,450</strong></li>
+              <li><span>Protein</span><strong>190 g</strong></li>
+              <li><span>Carbs</span><strong>245 g</strong></li>
+              <li><span>Fat</span><strong>70 g</strong></li>
+            </ul>
+          </article>
+
+          <article class="card wide">
+            <div class="card-head">
+              <h3>Prep Plan</h3>
+              <span class="tag accent">Weekly</span>
+            </div>
+            <div class="prep-grid">
+              <div>
+                <span class="label">Chicken breast</span>
+                <strong>49 oz for week</strong>
+              </div>
+              <div>
+                <span class="label">Cooked rice</span>
+                <strong>14 cups for week</strong>
+              </div>
+              <div>
+                <span class="label">Greek yogurt</span>
+                <strong>7 single servings</strong>
+              </div>
+              <div>
+                <span class="label">Eggs</span>
+                <strong>18 count</strong>
+              </div>
+              <div>
+                <span class="label">Oats</span>
+                <strong>7 cups dry</strong>
+              </div>
+              <div>
+                <span class="label">Blueberries</span>
+                <strong>4 pints</strong>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="architecture" class="section system">
+        <div class="section-heading">
+          <p class="eyebrow">System Design</p>
+          <h2>How the app would actually work</h2>
+        </div>
+        <div class="system-flow">
+          <article class="flow-card">
+            <h3>Garmin</h3>
+            <p>Wearable vitals, sleep, readiness, steps, calories, workouts.</p>
+          </article>
+          <article class="flow-card">
+            <h3>MyFitnessPal</h3>
+            <p>Weight history, food diary, calories, macros, meal behavior.</p>
+          </article>
+          <article class="flow-card">
+            <h3>FitNotes</h3>
+            <p>Workout imports, sets, reps, loads, split analysis, progression.</p>
+          </article>
+          <article class="flow-card emphasis">
+            <h3>Coaching Engine</h3>
+            <p>Turns all three into workout changes, meal suggestions, hydration prompts, and recovery advice.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

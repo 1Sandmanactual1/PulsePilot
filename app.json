@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "PulsePilot",
+    "slug": "pulsepilot",
+    "scheme": "pulsepilot",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#F4EFE5"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "plugins": [
+      "expo-router",
+      "expo-notifications"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pulsepilot.app"
+    },
+    "android": {
+      "package": "com.pulsepilot.app"
+    }
+  }
+}
