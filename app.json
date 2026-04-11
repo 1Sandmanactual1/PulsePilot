@@ -30,6 +30,13 @@
     },
     "android": {
       "package": "com.pulsepilot.app"
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d7612126-4ae4-4d78-8675-aefeee3c73de"
+      }
+    },
+    "owner": "sandmanactual"
   }
 }

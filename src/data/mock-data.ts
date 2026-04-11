@@ -3,9 +3,12 @@ import {
   CoachingSuggestion,
   DailyVitals,
   ExerciseDefinition,
+  NutritionDayPlan,
+  NutritionFoodEntry,
   NutritionSnapshot,
   SyncRule,
   UserProfile,
+  VitalHistoryPoint,
   WeeklyCheckIn,
   WorkoutDay
 } from "@/types/domain";
@@ -28,6 +31,16 @@ export const mockVitals: DailyVitals = {
   steps: 9340
 };
 
+export const mockVitalHistory: VitalHistoryPoint[] = [
+  { date: "2026-04-10", restingHeartRate: 51, bodyBattery: 78, steps: 9340, sleepHours: 7.7, pulseOx: 97, caloriesBurned: 2415, stressLevel: "low", source: "demo" },
+  { date: "2026-04-09", restingHeartRate: 52, bodyBattery: 74, steps: 8750, sleepHours: 7.2, pulseOx: 97, caloriesBurned: 2340, stressLevel: "moderate", source: "demo" },
+  { date: "2026-04-08", restingHeartRate: 53, bodyBattery: 76, steps: 10220, sleepHours: 7.9, pulseOx: 98, caloriesBurned: 2490, stressLevel: "low", source: "demo" },
+  { date: "2026-04-07", restingHeartRate: 54, bodyBattery: 69, steps: 7840, sleepHours: 6.8, pulseOx: 96, caloriesBurned: 2210, stressLevel: "moderate", source: "demo" },
+  { date: "2026-04-06", restingHeartRate: 52, bodyBattery: 81, steps: 11110, sleepHours: 8.1, pulseOx: 97, caloriesBurned: 2560, stressLevel: "low", source: "demo" },
+  { date: "2026-04-05", restingHeartRate: 50, bodyBattery: 84, steps: 9025, sleepHours: 8.3, pulseOx: 98, caloriesBurned: 2385, stressLevel: "low", source: "demo" },
+  { date: "2026-04-04", restingHeartRate: 51, bodyBattery: 80, steps: 9630, sleepHours: 7.8, pulseOx: 97, caloriesBurned: 2445, stressLevel: "low", source: "demo" }
+];
+
 export const mockNutrition: NutritionSnapshot = {
   caloriesTarget: 2450,
   caloriesConsumed: 2180,
@@ -36,6 +49,45 @@ export const mockNutrition: NutritionSnapshot = {
   fatGrams: 68,
   waterOz: 56
 };
+
+export const mockFoodLog: NutritionFoodEntry[] = [
+  {
+    id: "food-1",
+    name: "Eggs and oats",
+    meal: "breakfast",
+    calories: 520,
+    proteinGrams: 28,
+    carbsGrams: 42,
+    fatGrams: 24
+  },
+  {
+    id: "food-2",
+    name: "Chicken rice bowl",
+    meal: "lunch",
+    calories: 690,
+    proteinGrams: 54,
+    carbsGrams: 62,
+    fatGrams: 18
+  },
+  {
+    id: "food-3",
+    name: "Greek yogurt and berries",
+    meal: "snack",
+    calories: 310,
+    proteinGrams: 24,
+    carbsGrams: 34,
+    fatGrams: 6
+  },
+  {
+    id: "food-4",
+    name: "Steak and potatoes",
+    meal: "dinner",
+    calories: 660,
+    proteinGrams: 48,
+    carbsGrams: 46,
+    fatGrams: 20
+  }
+];
 
 export const exerciseLibrary: ExerciseDefinition[] = [
   {
@@ -66,21 +118,68 @@ export const mockWeeklyPlan: WorkoutDay[] = [
     dayLabel: "Monday",
     focus: "Chest + Triceps",
     exercises: [
-      { exerciseId: "barbell-row", sets: 4, reps: "8", weightLb: 185 },
-      { exerciseId: "rdl", sets: 3, reps: "8", weightLb: 225 }
+      { id: "mon-1", exerciseId: "barbell-bench", exerciseName: "Barbell Bench Press", category: "Chest", sets: 4, reps: "6-8", weightLb: 205 },
+      { id: "mon-2", exerciseId: "incline-db-press", exerciseName: "Incline Dumbbell Press", category: "Chest", sets: 3, reps: "8-10", weightLb: 70 },
+      { id: "mon-3", exerciseId: "rope-pushdown", exerciseName: "Rope Pushdown", category: "Triceps", sets: 3, reps: "12-15", weightLb: 55 }
     ]
   },
   {
     id: "tue",
     dayLabel: "Tuesday",
     focus: "Back + Biceps",
-    exercises: [{ exerciseId: "barbell-row", sets: 4, reps: "8", weightLb: 190 }]
+    exercises: [
+      { id: "tue-1", exerciseId: "barbell-row", exerciseName: "Barbell Row", category: "Back", sets: 4, reps: "8", weightLb: 190 },
+      { id: "tue-2", exerciseId: "lat-pulldown", exerciseName: "Lat Pulldown", category: "Back", sets: 3, reps: "10-12", weightLb: 145 },
+      { id: "tue-3", exerciseId: "hammer-curl", exerciseName: "Hammer Curl", category: "Biceps", sets: 3, reps: "10-12", weightLb: 35 }
+    ]
   },
   {
     id: "wed",
     dayLabel: "Wednesday",
     focus: "Legs",
-    exercises: [{ exerciseId: "rdl", sets: 3, reps: "8", weightLb: 225 }]
+    exercises: [
+      { id: "wed-1", exerciseId: "back-squat", exerciseName: "Back Squat", category: "Legs", sets: 4, reps: "5-6", weightLb: 255 },
+      { id: "wed-2", exerciseId: "rdl", exerciseName: "Romanian Deadlift", category: "Posterior Chain", sets: 3, reps: "8", weightLb: 225 },
+      { id: "wed-3", exerciseId: "leg-curl", exerciseName: "Leg Curl", category: "Hamstrings", sets: 3, reps: "12", weightLb: 105 }
+    ]
+  }
+];
+
+export const mockDailyMealPlan: NutritionDayPlan[] = [
+  {
+    dayLabel: "Monday",
+    focus: "Heavy upper day",
+    meals: ["Breakfast: oats, eggs, fruit", "Lunch: chicken rice bowl", "Dinner: steak, potatoes, vegetables", "Snack: yogurt + granola"]
+  },
+  {
+    dayLabel: "Tuesday",
+    focus: "Pull day support",
+    meals: ["Breakfast: bagel, eggs, berries", "Lunch: turkey wrap + rice", "Dinner: salmon, rice, asparagus", "Snack: shake + banana"]
+  },
+  {
+    dayLabel: "Wednesday",
+    focus: "Leg day fuel",
+    meals: ["Breakfast: overnight oats + whey", "Lunch: chicken pasta bowl", "Dinner: lean beef, potatoes, greens", "Snack: yogurt + cereal"]
+  },
+  {
+    dayLabel: "Thursday",
+    focus: "Recovery support",
+    meals: ["Breakfast: avocado toast + eggs", "Lunch: burrito bowl", "Dinner: chicken stir-fry", "Snack: cottage cheese + fruit"]
+  },
+  {
+    dayLabel: "Friday",
+    focus: "Top-set performance",
+    meals: ["Breakfast: pancakes + eggs", "Lunch: double chicken rice bowl", "Dinner: burgers + potatoes", "Snack: protein oats"]
+  },
+  {
+    dayLabel: "Saturday",
+    focus: "Flexible social meal day",
+    meals: ["Breakfast: Greek yogurt parfait", "Lunch: deli sandwich + fruit", "Dinner: higher-calorie meal fits macros", "Snack: shake or jerky"]
+  },
+  {
+    dayLabel: "Sunday",
+    focus: "Meal prep reset",
+    meals: ["Breakfast: veggie omelet + toast", "Lunch: chicken salad wrap", "Dinner: salmon + rice", "Snack: berries + yogurt"]
   }
 ];
 

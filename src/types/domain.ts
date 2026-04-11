@@ -67,6 +67,20 @@ export type DailyVitals = {
   steps: number;
 };
 
+export type VitalSyncStatus = "live" | "demo";
+
+export type VitalHistoryPoint = {
+  date: string;
+  restingHeartRate: number;
+  bodyBattery: number;
+  steps: number;
+  sleepHours: number;
+  pulseOx: number;
+  caloriesBurned: number;
+  stressLevel: DailyVitals["stressLevel"];
+  source: VitalSyncStatus;
+};
+
 export type NutritionSnapshot = {
   caloriesTarget: number;
   caloriesConsumed: number;
@@ -74,6 +88,22 @@ export type NutritionSnapshot = {
   carbsGrams: number;
   fatGrams: number;
   waterOz: number;
+};
+
+export type NutritionFoodEntry = {
+  id: string;
+  name: string;
+  meal: "breakfast" | "lunch" | "dinner" | "snack";
+  calories: number;
+  proteinGrams: number;
+  carbsGrams: number;
+  fatGrams: number;
+};
+
+export type NutritionDayPlan = {
+  dayLabel: string;
+  focus: string;
+  meals: string[];
 };
 
 export type ExerciseDefinition = {
@@ -88,7 +118,10 @@ export type ExerciseDefinition = {
 };
 
 export type WorkoutExercise = {
-  exerciseId: string;
+  id: string;
+  exerciseId?: string;
+  exerciseName: string;
+  category: string;
   sets: number;
   reps: string;
   weightLb: number;

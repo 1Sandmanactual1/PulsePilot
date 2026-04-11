@@ -1,6 +1,6 @@
 import { defaultPreferences, mockCheckIns, mockNutrition, mockProfile, mockVitals } from "@/data/mock-data";
 import { hasSupabaseEnv, supabase } from "@/lib/supabase";
-import { AppPreferences, DailyVitals, NutritionSnapshot, UserProfile, WeeklyCheckIn } from "@/types/domain";
+import { AppPreferences, DailyVitals, NutritionSnapshot, UserProfile, VitalHistoryPoint, WeeklyCheckIn } from "@/types/domain";
 
 export type FitNotesImportRecord = {
   id: string;
@@ -238,6 +238,39 @@ export async function loadDailyVitals(userId: string) {
     caloriesBurned: data.calories_burned ?? mockVitals.caloriesBurned,
     steps: data.steps ?? mockVitals.steps
   } satisfies DailyVitals;
+}
+
+export async function loadVitalHistory(userId: string) {
+  const client = getClient();
+  if (!client) {
+    return [] as VitalHistoryPoint[];
+  }
+
+  const { data, error } = await client
+    .from("garmin_daily_metrics")
+    .select("*")
+    .eq("user_id", userId)
+    .order("metric_date", { ascending: false })
+    .limit(7);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map(
+    (row) =>
+      ({
+        date: row.metric_date,
+        sleepHours: Number(row.sleep_hours ?? mockVitals.sleepHours),
+        restingHeartRate: row.resting_heart_rate ?? mockVitals.restingHeartRate,
+        bodyBattery: row.body_battery ?? mockVitals.bodyBattery,
+        stressLevel: row.stress_level ?? mockVitals.stressLevel,
+        pulseOx: row.pulse_ox ?? mockVitals.pulseOx,
+        caloriesBurned: row.calories_burned ?? mockVitals.caloriesBurned,
+        steps: row.steps ?? mockVitals.steps,
+        source: "live"
+      }) satisfies VitalHistoryPoint
+  );
 }
 
 export async function loadNutrition(userId: string) {
