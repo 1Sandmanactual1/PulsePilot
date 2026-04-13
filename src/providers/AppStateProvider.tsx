@@ -254,7 +254,12 @@ export function AppStateProvider({ children }: PropsWithChildren) {
         nextFitNotesImports = await loadFitNotesImports(session.user.id);
       }
 
-      const autoTargets = getNutritionTargetsForGoal(nextProfile.goal, nextProfile.currentWeightLb, nextGoalSettings[nextProfile.goal]);
+      const autoTargets = getNutritionTargetsForGoal(
+        nextProfile.goal,
+        nextProfile.currentWeightLb,
+        nextProfile.age,
+        nextGoalSettings[nextProfile.goal]
+      );
       const macroTargets = {
         calories: nextNutritionTargets.calories || autoTargets.calories,
         proteinGrams: nextNutritionTargets.proteinGrams || autoTargets.proteinGrams,
@@ -312,7 +317,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
   async function updateProfile(next: UserProfile) {
     setProfile(next);
     await setJson(PROFILE_KEY, next);
-    const macroTargets = getNutritionTargetsForGoal(next.goal, next.currentWeightLb, goalSettings[next.goal]);
+    const macroTargets = getNutritionTargetsForGoal(next.goal, next.currentWeightLb, next.age, goalSettings[next.goal]);
     setNutritionTargets(macroTargets);
     await setJson(NUTRITION_TARGETS_KEY, macroTargets);
     setNutrition((current) => ({
@@ -361,7 +366,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
     setGoalSettings(merged);
     await setJson(GOAL_SETTINGS_KEY, merged);
     if (profile.goal === goal) {
-      const macroTargets = getNutritionTargetsForGoal(goal, profile.currentWeightLb, merged[goal]);
+      const macroTargets = getNutritionTargetsForGoal(goal, profile.currentWeightLb, profile.age, merged[goal]);
       setNutrition((current) => ({
         ...current,
         caloriesTarget: macroTargets.calories
@@ -474,7 +479,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
     await setJson(FOOD_LOG_KEY, next);
     const macroTargets = nutritionTargets.calories
       ? nutritionTargets
-      : getNutritionTargetsForGoal(profile.goal, profile.currentWeightLb, goalSettings[profile.goal]);
+      : getNutritionTargetsForGoal(profile.goal, profile.currentWeightLb, profile.age, goalSettings[profile.goal]);
     setNutrition(
       buildNutritionFromFoodLog(next, {
         ...nutrition,
@@ -489,7 +494,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
     await setJson(FOOD_LOG_KEY, next);
     const macroTargets = nutritionTargets.calories
       ? nutritionTargets
-      : getNutritionTargetsForGoal(profile.goal, profile.currentWeightLb, goalSettings[profile.goal]);
+      : getNutritionTargetsForGoal(profile.goal, profile.currentWeightLb, profile.age, goalSettings[profile.goal]);
     setNutrition(
       buildNutritionFromFoodLog(next, {
         ...nutrition,

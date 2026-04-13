@@ -7,6 +7,13 @@ export type FitnessGoal =
   | "general-health";
 
 export type GoalTimeUnit = "days" | "weeks" | "months";
+export type ActivityLevel =
+  | "stationary"
+  | "some-movement"
+  | "moderate-movement"
+  | "steady-moving"
+  | "moving-all-day"
+  | "very-active";
 
 export type NotificationMode = "off" | "in-app" | "push";
 
@@ -63,6 +70,7 @@ export type FatLossGoalSettings = {
   goalWeightLb?: number;
   timeframeValue?: number;
   timeframeUnit: GoalTimeUnit;
+  activityLevel: ActivityLevel;
 };
 
 export type GoalSettingsMap = Record<

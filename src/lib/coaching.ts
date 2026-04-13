@@ -1,4 +1,5 @@
 import {
+  ActivityLevel,
   CoachingSuggestion,
   DailyVitals,
   FitnessGoal,
@@ -9,6 +10,35 @@ import {
   VitalHistoryPoint,
   WeeklyStrengthFeeling
 } from "@/types/domain";
+
+const activityMaintenanceMultipliers: Record<ActivityLevel, number> = {
+  stationary: 12,
+  "some-movement": 13,
+  "moderate-movement": 14,
+  "steady-moving": 15,
+  "moving-all-day": 16,
+  "very-active": 17
+};
+
+function getAgeAdjustment(age: number) {
+  if (age < 25) {
+    return 100;
+  }
+
+  if (age < 40) {
+    return 0;
+  }
+
+  if (age < 55) {
+    return -100;
+  }
+
+  return -180;
+}
+
+function getEstimatedMaintenanceCalories(weightLb: number, age: number, activityLevel: ActivityLevel) {
+  return Math.round(weightLb * activityMaintenanceMultipliers[activityLevel] + getAgeAdjustment(age));
+}
 
 export function getGoalSummary(goal: FitnessGoal) {
   const lookup: Record<FitnessGoal, { summary: string; bullets: string[] }> = {
@@ -134,7 +164,12 @@ export function buildNutritionFromFoodLog(foodLog: NutritionFoodEntry[], fallbac
   };
 }
 
-export function getNutritionTargetsForGoal(goal: FitnessGoal, weightLb: number, goalSettings?: GoalSettingsMap[FitnessGoal]) {
+export function getNutritionTargetsForGoal(
+  goal: FitnessGoal,
+  weightLb: number,
+  age: number,
+  goalSettings?: GoalSettingsMap[FitnessGoal]
+) {
   const baselineCalories = {
     strength: Math.round(weightLb * 14.5),
     hypertrophy: Math.round(weightLb * 15.5),
@@ -167,6 +202,9 @@ export function getNutritionTargetsForGoal(goal: FitnessGoal, weightLb: number, 
     const targetWeight = goalSettings?.fatloss?.goalWeightLb;
     const timeframeValue = goalSettings?.fatloss?.timeframeValue;
     const timeframeUnit = goalSettings?.fatloss?.timeframeUnit ?? "weeks";
+    const activityLevel = goalSettings?.fatloss?.activityLevel ?? "moderate-movement";
+    const maintenanceEstimate = getEstimatedMaintenanceCalories(weightLb, age, activityLevel);
+    calories = Math.round(maintenanceEstimate - 500);
 
     if (targetWeight && timeframeValue && targetWeight < weightLb) {
       const poundsToLose = weightLb - targetWeight;
@@ -178,9 +216,11 @@ export function getNutritionTargetsForGoal(goal: FitnessGoal, weightLb: number, 
             : timeframeValue * 30;
 
       if (days > 0) {
-        const dailyDeficit = (poundsToLose * 3500) / days;
-        const maintenanceEstimate = Math.round(weightLb * 14);
-        calories = Math.max(Math.round(maintenanceEstimate - dailyDeficit), Math.round(weightLb * 8));
+        const requestedPoundsPerWeek = (poundsToLose / days) * 7;
+        const recommendedMaxWeeklyLoss = Number(Math.min(2, weightLb * 0.01).toFixed(2));
+        const appliedPoundsPerWeek = Math.min(requestedPoundsPerWeek, recommendedMaxWeeklyLoss);
+        const dailyDeficit = appliedPoundsPerWeek * 500;
+        calories = Math.round(maintenanceEstimate - dailyDeficit);
       }
     }
   }
@@ -197,6 +237,7 @@ export function getFatLossGoalDetails(weightLb: number, goalSettings?: GoalSetti
   const targetWeight = goalSettings?.fatloss?.goalWeightLb;
   const timeframeValue = goalSettings?.fatloss?.timeframeValue;
   const timeframeUnit = goalSettings?.fatloss?.timeframeUnit ?? "weeks";
+  const activityLevel = goalSettings?.fatloss?.activityLevel ?? "moderate-movement";
 
   if (!targetWeight || !timeframeValue || targetWeight >= weightLb) {
     return null;
@@ -207,16 +248,22 @@ export function getFatLossGoalDetails(weightLb: number, goalSettings?: GoalSetti
     timeframeUnit === "days"
       ? timeframeValue
       : timeframeUnit === "weeks"
-        ? timeframeValue * 7
-        : timeframeValue * 30;
-  const poundsPerWeek = Number(((poundsToLose / days) * 7).toFixed(2));
+      ? timeframeValue * 7
+      : timeframeValue * 30;
+  const requestedPoundsPerWeek = Number(((poundsToLose / days) * 7).toFixed(2));
+  const recommendedMaxWeeklyLoss = Number(Math.min(2, weightLb * 0.01).toFixed(2));
+  const appliedPoundsPerWeek = Number(Math.min(requestedPoundsPerWeek, recommendedMaxWeeklyLoss).toFixed(2));
 
   return {
     targetWeight,
     timeframeValue,
     timeframeUnit,
     poundsToLose,
-    poundsPerWeek
+    requestedPoundsPerWeek,
+    poundsPerWeek: appliedPoundsPerWeek,
+    recommendedMaxWeeklyLoss,
+    isPaceCapped: requestedPoundsPerWeek > recommendedMaxWeeklyLoss,
+    activityLevel
   };
 }
 

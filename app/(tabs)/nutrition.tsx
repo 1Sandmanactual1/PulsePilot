@@ -7,7 +7,7 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { getFatLossGoalDetails, getGoalLabel, getNutritionTargetsForGoal } from "@/lib/coaching";
 import { useAppState } from "@/providers/AppStateProvider";
 import { colors, radius, spacing } from "@/theme/theme";
-import { FitnessGoal, GoalTimeUnit, NutritionFoodEntry } from "@/types/domain";
+import { ActivityLevel, FitnessGoal, GoalTimeUnit, NutritionFoodEntry } from "@/types/domain";
 
 const goalOptions: FitnessGoal[] = [
   "strength",
@@ -16,6 +16,15 @@ const goalOptions: FitnessGoal[] = [
   "fatloss",
   "flexibility",
   "general-health"
+];
+
+const activityOptions: Array<{ value: ActivityLevel; label: string }> = [
+  { value: "stationary", label: "Stationary" },
+  { value: "some-movement", label: "Some movement" },
+  { value: "moderate-movement", label: "Moderate movement" },
+  { value: "steady-moving", label: "Steady moving" },
+  { value: "moving-all-day", label: "Moving all day" },
+  { value: "very-active", label: "Very active" }
 ];
 
 type FoodForm = {
@@ -82,12 +91,13 @@ export default function NutritionScreen() {
   const fatLossSettings = goalSettings.fatloss.fatloss ?? {
     goalWeightLb: undefined,
     timeframeValue: undefined,
-    timeframeUnit: "weeks" as GoalTimeUnit
+    timeframeUnit: "weeks" as GoalTimeUnit,
+    activityLevel: "moderate-movement" as ActivityLevel
   };
 
   const autoTargets = useMemo(
-    () => getNutritionTargetsForGoal(profile.goal, profile.currentWeightLb, goalSettings[profile.goal]),
-    [goalSettings, profile.currentWeightLb, profile.goal]
+    () => getNutritionTargetsForGoal(profile.goal, profile.currentWeightLb, profile.age, goalSettings[profile.goal]),
+    [goalSettings, profile.age, profile.currentWeightLb, profile.goal]
   );
   const fatLossDetails = useMemo(
     () => getFatLossGoalDetails(profile.currentWeightLb, goalSettings.fatloss),
@@ -215,6 +225,7 @@ export default function NutritionScreen() {
             <Text style={styles.label}>Current weight</Text>
             <Text style={styles.value}>{profile.currentWeightLb.toFixed(1)} lb</Text>
           </View>
+          <Text style={styles.label}>Goal weight</Text>
           <TextInput
             keyboardType="numeric"
             onChangeText={(value) =>
@@ -230,6 +241,32 @@ export default function NutritionScreen() {
             style={styles.fullInput}
             value={fatLossSettings.goalWeightLb ? String(fatLossSettings.goalWeightLb) : ""}
           />
+          <Text style={styles.label}>Activity level</Text>
+          <View style={styles.goalRow}>
+            {activityOptions.map((option) => (
+              <Pressable
+                key={option.value}
+                onPress={() =>
+                  updateGoalSettings("fatloss", {
+                    fatloss: {
+                      ...fatLossSettings,
+                      activityLevel: option.value
+                    }
+                  })
+                }
+                style={[styles.goalButton, fatLossSettings.activityLevel === option.value && styles.goalButtonActive]}
+              >
+                <Text
+                  style={[
+                    styles.goalButtonText,
+                    fatLossSettings.activityLevel === option.value && styles.goalButtonTextActive
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
           <View style={styles.inputRow}>
             <TextInput
               keyboardType="numeric"
@@ -268,11 +305,24 @@ export default function NutritionScreen() {
             </View>
           </View>
           {fatLossDetails ? (
-            <Text style={styles.helper}>
-              Goal: lose {fatLossDetails.poundsToLose} lb to reach {fatLossDetails.targetWeight} lb in{" "}
-              {fatLossDetails.timeframeValue} {fatLossDetails.timeframeUnit}. That works out to about{" "}
-              {fatLossDetails.poundsPerWeek} lb per week.
-            </Text>
+            <View style={styles.helperBlock}>
+              <Text style={styles.helper}>
+                Goal: lose {fatLossDetails.poundsToLose} lb to reach {fatLossDetails.targetWeight} lb in{" "}
+                {fatLossDetails.timeframeValue} {fatLossDetails.timeframeUnit}. That works out to about{" "}
+                {fatLossDetails.poundsPerWeek} lb per week.
+              </Text>
+              {fatLossDetails.isPaceCapped ? (
+                <Text style={styles.warningText}>
+                  Your requested pace is above the current recommended cap of {fatLossDetails.recommendedMaxWeeklyLoss}{" "}
+                  lb per week, so PulsePilot is using that capped pace for the calorie target instead of silently
+                  bottoming out.
+                </Text>
+              ) : null}
+              <Text style={styles.body}>
+                These fat-loss targets use your current weight, age, and selected activity level. Height/sex are not
+                collected yet, so this is still an estimate rather than a full metabolic calculation.
+              </Text>
+            </View>
           ) : (
             <Text style={styles.helper}>
               Leave goal weight or timeframe blank if you want the general cutting target instead of a timed weight-loss
@@ -610,7 +660,7 @@ function MacroBar({
         </Text>
       </View>
       <View style={styles.barTrack}>
-        <View style={[styles.barFill, { width: `${Math.max(progress * 100, 6)}%` }]} />
+        <View style={[styles.barFill, { width: `${progress * 100}%` }]} />
       </View>
     </View>
   );
@@ -631,6 +681,14 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontSize: 13,
     fontWeight: "700"
+  },
+  helperBlock: {
+    gap: spacing.xs
+  },
+  warningText: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: "800"
   },
   goalRow: {
     flexDirection: "row",

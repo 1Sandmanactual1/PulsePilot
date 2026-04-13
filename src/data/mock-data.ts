@@ -36,7 +36,8 @@ export const defaultGoalSettings: GoalSettingsMap = {
     fatloss: {
       goalWeightLb: undefined,
       timeframeValue: undefined,
-      timeframeUnit: "weeks"
+      timeframeUnit: "weeks",
+      activityLevel: "moderate-movement"
     }
   },
   flexibility: {},
