@@ -3,6 +3,7 @@ import {
   CoachingSuggestion,
   DailyVitals,
   ExerciseDefinition,
+  GoalSettingsMap,
   NutritionDayPlan,
   NutritionFoodEntry,
   NutritionSnapshot,
@@ -25,6 +26,21 @@ export const mockProfile: UserProfile = {
   age: 34,
   currentWeightLb: 198.6,
   goal: "strength"
+};
+
+export const defaultGoalSettings: GoalSettingsMap = {
+  strength: {},
+  hypertrophy: {},
+  endurance: {},
+  fatloss: {
+    fatloss: {
+      goalWeightLb: undefined,
+      timeframeValue: undefined,
+      timeframeUnit: "weeks"
+    }
+  },
+  flexibility: {},
+  "general-health": {}
 };
 
 export const mockVitals: DailyVitals = {

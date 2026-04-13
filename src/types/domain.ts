@@ -6,6 +6,8 @@ export type FitnessGoal =
   | "flexibility"
   | "general-health";
 
+export type GoalTimeUnit = "days" | "weeks" | "months";
+
 export type NotificationMode = "off" | "in-app" | "push";
 
 export type WeeklyStrengthFeeling = "stronger" | "same" | "weaker";
@@ -56,6 +58,19 @@ export type UserProfile = {
   currentWeightLb: number;
   goal: FitnessGoal;
 };
+
+export type FatLossGoalSettings = {
+  goalWeightLb?: number;
+  timeframeValue?: number;
+  timeframeUnit: GoalTimeUnit;
+};
+
+export type GoalSettingsMap = Record<
+  FitnessGoal,
+  {
+    fatloss?: FatLossGoalSettings;
+  }
+>;
 
 export type DailyVitals = {
   sleepHours: number;

@@ -2,6 +2,7 @@ import {
   CoachingSuggestion,
   DailyVitals,
   FitnessGoal,
+  GoalSettingsMap,
   NutritionDayPlan,
   NutritionFoodEntry,
   NutritionSnapshot,
@@ -133,8 +134,8 @@ export function buildNutritionFromFoodLog(foodLog: NutritionFoodEntry[], fallbac
   };
 }
 
-export function getNutritionTargetsForGoal(goal: FitnessGoal, weightLb: number) {
-  const calories = {
+export function getNutritionTargetsForGoal(goal: FitnessGoal, weightLb: number, goalSettings?: GoalSettingsMap[FitnessGoal]) {
+  const baselineCalories = {
     strength: Math.round(weightLb * 14.5),
     hypertrophy: Math.round(weightLb * 15.5),
     endurance: Math.round(weightLb * 14),
@@ -161,11 +162,61 @@ export function getNutritionTargetsForGoal(goal: FitnessGoal, weightLb: number) 
     "general-health": 1
   }[goal];
 
+  let calories = baselineCalories;
+  if (goal === "fatloss") {
+    const targetWeight = goalSettings?.fatloss?.goalWeightLb;
+    const timeframeValue = goalSettings?.fatloss?.timeframeValue;
+    const timeframeUnit = goalSettings?.fatloss?.timeframeUnit ?? "weeks";
+
+    if (targetWeight && timeframeValue && targetWeight < weightLb) {
+      const poundsToLose = weightLb - targetWeight;
+      const days =
+        timeframeUnit === "days"
+          ? timeframeValue
+          : timeframeUnit === "weeks"
+            ? timeframeValue * 7
+            : timeframeValue * 30;
+
+      if (days > 0) {
+        const dailyDeficit = (poundsToLose * 3500) / days;
+        const maintenanceEstimate = Math.round(weightLb * 14);
+        calories = Math.max(Math.round(maintenanceEstimate - dailyDeficit), Math.round(weightLb * 8));
+      }
+    }
+  }
+
   return {
     calories,
     proteinGrams: Math.round(weightLb * proteinMultiplier),
     carbsGrams: Math.round(weightLb * carbsMultiplier),
     fatGrams: Math.round((calories * 0.27) / 9)
+  };
+}
+
+export function getFatLossGoalDetails(weightLb: number, goalSettings?: GoalSettingsMap[FitnessGoal]) {
+  const targetWeight = goalSettings?.fatloss?.goalWeightLb;
+  const timeframeValue = goalSettings?.fatloss?.timeframeValue;
+  const timeframeUnit = goalSettings?.fatloss?.timeframeUnit ?? "weeks";
+
+  if (!targetWeight || !timeframeValue || targetWeight >= weightLb) {
+    return null;
+  }
+
+  const poundsToLose = Number((weightLb - targetWeight).toFixed(1));
+  const days =
+    timeframeUnit === "days"
+      ? timeframeValue
+      : timeframeUnit === "weeks"
+        ? timeframeValue * 7
+        : timeframeValue * 30;
+  const poundsPerWeek = Number(((poundsToLose / days) * 7).toFixed(2));
+
+  return {
+    targetWeight,
+    timeframeValue,
+    timeframeUnit,
+    poundsToLose,
+    poundsPerWeek
   };
 }
 
