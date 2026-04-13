@@ -14,6 +14,7 @@ export type ActivityLevel =
   | "steady-moving"
   | "moving-all-day"
   | "very-active";
+export type BiologicalSex = "female" | "male";
 
 export type NotificationMode = "off" | "in-app" | "push";
 
@@ -63,6 +64,8 @@ export type UserProfile = {
   email: string;
   age: number;
   currentWeightLb: number;
+  heightInches?: number;
+  biologicalSex?: BiologicalSex;
   goal: FitnessGoal;
 };
 
@@ -71,6 +74,54 @@ export type FatLossGoalSettings = {
   timeframeValue?: number;
   timeframeUnit: GoalTimeUnit;
   activityLevel: ActivityLevel;
+};
+
+export type FatLossGoalDetails = {
+  targetWeight: number;
+  timeframeValue: number;
+  timeframeUnit: GoalTimeUnit;
+  poundsToLose: number;
+  requestedPoundsPerWeek: number;
+  recommendedPoundsPerWeek: number;
+  maintenanceCalories: number;
+  requestedCalories: number;
+  recommendedCalories: number;
+  requestedDailyDeficit: number;
+  recommendedDailyDeficit: number;
+  warningMessages: string[];
+  activityLevel: ActivityLevel;
+  calculationMethod: "mifflin-st-jeor" | "weight-activity-estimate";
+};
+
+export type CoachRole = "user" | "assistant";
+
+export type CoachActionType =
+  | "add-workout-exercise"
+  | "remove-workout-exercise"
+  | "change-goal"
+  | "add-meal-plan-item"
+  | "remove-meal-plan-item";
+
+export type CoachAction = {
+  id: string;
+  type: CoachActionType;
+  label: string;
+  payload: Record<string, string>;
+};
+
+export type CoachMessage = {
+  id: string;
+  role: CoachRole;
+  text: string;
+  createdAt: string;
+  pendingAction?: CoachAction;
+};
+
+export type CoachMemory = {
+  acceptedActionCount: number;
+  declinedActionCount: number;
+  recentTopics: string[];
+  lastSuggestedAt?: string;
 };
 
 export type GoalSettingsMap = Record<

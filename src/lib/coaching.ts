@@ -1,7 +1,9 @@
 import {
   ActivityLevel,
+  BiologicalSex,
   CoachingSuggestion,
   DailyVitals,
+  FatLossGoalDetails,
   FitnessGoal,
   GoalSettingsMap,
   NutritionDayPlan,
@@ -12,12 +14,12 @@ import {
 } from "@/types/domain";
 
 const activityMaintenanceMultipliers: Record<ActivityLevel, number> = {
-  stationary: 12,
-  "some-movement": 13,
-  "moderate-movement": 14,
-  "steady-moving": 15,
-  "moving-all-day": 16,
-  "very-active": 17
+  stationary: 1.2,
+  "some-movement": 1.375,
+  "moderate-movement": 1.55,
+  "steady-moving": 1.65,
+  "moving-all-day": 1.725,
+  "very-active": 1.9
 };
 
 function getAgeAdjustment(age: number) {
@@ -36,8 +38,41 @@ function getAgeAdjustment(age: number) {
   return -180;
 }
 
-function getEstimatedMaintenanceCalories(weightLb: number, age: number, activityLevel: ActivityLevel) {
-  return Math.round(weightLb * activityMaintenanceMultipliers[activityLevel] + getAgeAdjustment(age));
+function poundsToKilograms(weightLb: number) {
+  return weightLb * 0.45359237;
+}
+
+function inchesToCentimeters(heightInches: number) {
+  return heightInches * 2.54;
+}
+
+function getMifflinStJeorBmr(weightLb: number, heightInches: number, age: number, biologicalSex: BiologicalSex) {
+  const weightKg = poundsToKilograms(weightLb);
+  const heightCm = inchesToCentimeters(heightInches);
+  const sexAdjustment = biologicalSex === "male" ? 5 : -161;
+
+  return 10 * weightKg + 6.25 * heightCm - 5 * age + sexAdjustment;
+}
+
+export function getEstimatedMaintenanceCalories(
+  weightLb: number,
+  age: number,
+  activityLevel: ActivityLevel,
+  heightInches?: number,
+  biologicalSex?: BiologicalSex
+) {
+  if (heightInches && biologicalSex) {
+    const bmr = getMifflinStJeorBmr(weightLb, heightInches, age, biologicalSex);
+    return {
+      calories: Math.round(bmr * activityMaintenanceMultipliers[activityLevel]),
+      method: "mifflin-st-jeor" as const
+    };
+  }
+
+  return {
+    calories: Math.round(weightLb * (activityMaintenanceMultipliers[activityLevel] * 11.25) + getAgeAdjustment(age)),
+    method: "weight-activity-estimate" as const
+  };
 }
 
 export function getGoalSummary(goal: FitnessGoal) {
@@ -168,7 +203,9 @@ export function getNutritionTargetsForGoal(
   goal: FitnessGoal,
   weightLb: number,
   age: number,
-  goalSettings?: GoalSettingsMap[FitnessGoal]
+  goalSettings?: GoalSettingsMap[FitnessGoal],
+  heightInches?: number,
+  biologicalSex?: BiologicalSex
 ) {
   const baselineCalories = {
     strength: Math.round(weightLb * 14.5),
@@ -199,30 +236,16 @@ export function getNutritionTargetsForGoal(
 
   let calories = baselineCalories;
   if (goal === "fatloss") {
-    const targetWeight = goalSettings?.fatloss?.goalWeightLb;
-    const timeframeValue = goalSettings?.fatloss?.timeframeValue;
-    const timeframeUnit = goalSettings?.fatloss?.timeframeUnit ?? "weeks";
     const activityLevel = goalSettings?.fatloss?.activityLevel ?? "moderate-movement";
-    const maintenanceEstimate = getEstimatedMaintenanceCalories(weightLb, age, activityLevel);
-    calories = Math.round(maintenanceEstimate - 500);
-
-    if (targetWeight && timeframeValue && targetWeight < weightLb) {
-      const poundsToLose = weightLb - targetWeight;
-      const days =
-        timeframeUnit === "days"
-          ? timeframeValue
-          : timeframeUnit === "weeks"
-            ? timeframeValue * 7
-            : timeframeValue * 30;
-
-      if (days > 0) {
-        const requestedPoundsPerWeek = (poundsToLose / days) * 7;
-        const recommendedMaxWeeklyLoss = Number(Math.min(2, weightLb * 0.01).toFixed(2));
-        const appliedPoundsPerWeek = Math.min(requestedPoundsPerWeek, recommendedMaxWeeklyLoss);
-        const dailyDeficit = appliedPoundsPerWeek * 500;
-        calories = Math.round(maintenanceEstimate - dailyDeficit);
-      }
-    }
+    const maintenanceEstimate = getEstimatedMaintenanceCalories(
+      weightLb,
+      age,
+      activityLevel,
+      heightInches,
+      biologicalSex
+    );
+    const details = getFatLossGoalDetails(weightLb, age, goalSettings, heightInches, biologicalSex);
+    calories = details?.requestedCalories ?? Math.round(maintenanceEstimate.calories - 500);
   }
 
   return {
@@ -233,7 +256,13 @@ export function getNutritionTargetsForGoal(
   };
 }
 
-export function getFatLossGoalDetails(weightLb: number, goalSettings?: GoalSettingsMap[FitnessGoal]) {
+export function getFatLossGoalDetails(
+  weightLb: number,
+  age: number,
+  goalSettings?: GoalSettingsMap[FitnessGoal],
+  heightInches?: number,
+  biologicalSex?: BiologicalSex
+): FatLossGoalDetails | null {
   const targetWeight = goalSettings?.fatloss?.goalWeightLb;
   const timeframeValue = goalSettings?.fatloss?.timeframeValue;
   const timeframeUnit = goalSettings?.fatloss?.timeframeUnit ?? "weeks";
@@ -251,8 +280,39 @@ export function getFatLossGoalDetails(weightLb: number, goalSettings?: GoalSetti
       ? timeframeValue * 7
       : timeframeValue * 30;
   const requestedPoundsPerWeek = Number(((poundsToLose / days) * 7).toFixed(2));
-  const recommendedMaxWeeklyLoss = Number(Math.min(2, weightLb * 0.01).toFixed(2));
-  const appliedPoundsPerWeek = Number(Math.min(requestedPoundsPerWeek, recommendedMaxWeeklyLoss).toFixed(2));
+  const recommendedPoundsPerWeek = Number(Math.min(2, weightLb * 0.01).toFixed(2));
+  const requestedDailyDeficit = Math.round((poundsToLose * 3500) / days);
+  const recommendedDailyDeficit = Math.round(recommendedPoundsPerWeek * 500);
+  const maintenanceEstimate = getEstimatedMaintenanceCalories(
+    weightLb,
+    age,
+    activityLevel,
+    heightInches,
+    biologicalSex
+  );
+  const requestedCalories = Math.round(maintenanceEstimate.calories - requestedDailyDeficit);
+  const recommendedCalories = Math.round(maintenanceEstimate.calories - recommendedDailyDeficit);
+  const warningMessages: string[] = [];
+
+  if (requestedPoundsPerWeek > recommendedPoundsPerWeek) {
+    warningMessages.push(
+      `This requested pace is faster than the general public-health guidance of about 1 to 2 lb per week, and faster than about 1% of your body weight per week.`
+    );
+  }
+
+  if (requestedCalories <= 0) {
+    warningMessages.push("This requested target falls at or below zero calories per day, which is physiologically impossible.");
+  } else if (requestedDailyDeficit > 1000) {
+    warningMessages.push(
+      `This plan requires an average deficit of about ${requestedDailyDeficit} calories per day, which is more aggressive than the usual 500 to 1,000 calorie daily deficit used to support roughly 1 to 2 lb of weekly loss.`
+    );
+  }
+
+  if (!heightInches || !biologicalSex) {
+    warningMessages.push(
+      "For a tighter maintenance estimate, add height and sex. Right now PulsePilot is using a lighter weight-age-activity estimate instead of a full Mifflin-St Jeor calculation."
+    );
+  }
 
   return {
     targetWeight,
@@ -260,10 +320,15 @@ export function getFatLossGoalDetails(weightLb: number, goalSettings?: GoalSetti
     timeframeUnit,
     poundsToLose,
     requestedPoundsPerWeek,
-    poundsPerWeek: appliedPoundsPerWeek,
-    recommendedMaxWeeklyLoss,
-    isPaceCapped: requestedPoundsPerWeek > recommendedMaxWeeklyLoss,
-    activityLevel
+    recommendedPoundsPerWeek,
+    maintenanceCalories: maintenanceEstimate.calories,
+    requestedCalories,
+    recommendedCalories,
+    requestedDailyDeficit,
+    recommendedDailyDeficit,
+    warningMessages,
+    activityLevel,
+    calculationMethod: maintenanceEstimate.method
   };
 }
 

@@ -1,13 +1,15 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { Card } from "@/components/Card";
 import { Pill } from "@/components/Pill";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { SectionHeader } from "@/components/SectionHeader";
+import { buildCoachConfirmationMessage, buildCoachReply } from "@/lib/coach";
 import { StatRow } from "@/components/StatRow";
 import { useAppState } from "@/providers/AppStateProvider";
 import { getGoalLabel, getGoalSummary, getHydrationGuidance, getVitalAverages } from "@/lib/coaching";
-import { FitnessGoal } from "@/types/domain";
+import { CoachAction, CoachMessage, FitnessGoal } from "@/types/domain";
 import { colors, radius, spacing } from "@/theme/theme";
 
 const goalOptions: FitnessGoal[] = [
@@ -20,7 +22,34 @@ const goalOptions: FitnessGoal[] = [
 ];
 
 export default function TodayScreen() {
-  const { profile, vitals, nutrition, preferences, setGoal, vitalHistory, vitalsStatus } = useAppState();
+  const {
+    profile,
+    vitals,
+    nutrition,
+    preferences,
+    setGoal,
+    vitalHistory,
+    vitalsStatus,
+    weeklyPlan,
+    dailyMealPlan,
+    nutritionTargets,
+    addWorkoutExercise,
+    removeWorkoutExercise,
+    addMealPlanItem,
+    removeMealPlanItem,
+    coachMemory,
+    updateCoachMemory
+  } = useAppState();
+  const [coachInput, setCoachInput] = useState("");
+  const [coachMessages, setCoachMessages] = useState<CoachMessage[]>([
+    {
+      id: "coach-welcome",
+      role: "assistant",
+      text: "I’m your PulsePilot coach. Ask me about your calories, workouts, or meal plan, or tell me a change you want me to make.",
+      createdAt: new Date().toISOString()
+    }
+  ]);
+  const [pendingAction, setPendingAction] = useState<CoachAction | undefined>();
   const goalSummary = getGoalSummary(profile.goal);
   const hydrationGuidance = getHydrationGuidance(
     nutrition.waterOz,
@@ -29,6 +58,100 @@ export default function TodayScreen() {
   );
   const averages = getVitalAverages(vitalHistory);
   const liveGarmin = vitalsStatus === "live";
+
+  async function handleCoachSend() {
+    if (!coachInput.trim()) {
+      return;
+    }
+
+    const userMessage: CoachMessage = {
+      id: `user-${Date.now()}`,
+      role: "user",
+      text: coachInput.trim(),
+      createdAt: new Date().toISOString()
+    };
+    const reply = buildCoachReply({
+      message: coachInput,
+      profile,
+      nutritionTargets,
+      weeklyPlan,
+      dailyMealPlan
+    });
+    const assistantMessage: CoachMessage = {
+      id: `assistant-${Date.now()}`,
+      role: "assistant",
+      text: reply.text,
+      createdAt: new Date().toISOString(),
+      pendingAction: reply.pendingAction
+    };
+
+    setCoachMessages((current) => [...current, userMessage, assistantMessage]);
+    setPendingAction(reply.pendingAction);
+    setCoachInput("");
+    await updateCoachMemory({
+      lastSuggestedAt: new Date().toISOString(),
+      recentTopics: Array.from(new Set([...coachMemory.recentTopics, ...reply.topics])).slice(-8)
+    });
+  }
+
+  async function handleCoachAction(action: CoachAction, accepted: boolean) {
+    if (!accepted) {
+      setPendingAction(undefined);
+      setCoachMessages((current) => [
+        ...current,
+        {
+          id: `assistant-decline-${Date.now()}`,
+          role: "assistant",
+          text: "No problem. I left everything unchanged.",
+          createdAt: new Date().toISOString()
+        }
+      ]);
+      await updateCoachMemory({
+        declinedActionCount: coachMemory.declinedActionCount + 1
+      });
+      return;
+    }
+
+    if (action.type === "add-workout-exercise") {
+      await addWorkoutExercise(action.payload.dayId, action.payload.exerciseName, action.payload.category);
+    }
+
+    if (action.type === "remove-workout-exercise") {
+      const day = weeklyPlan.find((entry) => entry.id === action.payload.dayId);
+      const match = day?.exercises.find(
+        (exercise) => exercise.exerciseName.toLowerCase() === action.payload.exerciseName.toLowerCase()
+      );
+      if (match) {
+        await removeWorkoutExercise(action.payload.dayId, match.id);
+      }
+    }
+
+    if (action.type === "change-goal") {
+      await setGoal(action.payload.goal as FitnessGoal);
+    }
+
+    if (action.type === "add-meal-plan-item") {
+      await addMealPlanItem(action.payload.dayLabel, action.payload.meal);
+    }
+
+    if (action.type === "remove-meal-plan-item") {
+      await removeMealPlanItem(action.payload.dayLabel, action.payload.meal);
+    }
+
+    setPendingAction(undefined);
+    setCoachMessages((current) => [
+      ...current,
+      {
+        id: `assistant-confirm-${Date.now()}`,
+        role: "assistant",
+        text: buildCoachConfirmationMessage(action.label),
+        createdAt: new Date().toISOString()
+      }
+    ]);
+    await updateCoachMemory({
+      acceptedActionCount: coachMemory.acceptedActionCount + 1
+    });
+  }
 
   return (
     <ScreenContainer>
@@ -114,6 +237,48 @@ export default function TodayScreen() {
           Prompt mode: {preferences.hydration.enabled ? preferences.hydration.mode : "off"}.
         </Text>
       </Card>
+
+      <Card>
+        <Text style={styles.cardTitle}>PulsePilot coach</Text>
+        <Text style={styles.body}>
+          Ask health questions, or tell me to add or remove a workout or meal-plan item and I can stage the change for
+          confirmation.
+        </Text>
+        <View style={styles.pillRow}>
+          <Pill label={`Accepted changes: ${coachMemory.acceptedActionCount}`} />
+          <Pill label={`Declined changes: ${coachMemory.declinedActionCount}`} />
+        </View>
+        <View style={styles.coachThread}>
+          {coachMessages.slice(-6).map((message) => (
+            <View
+              key={message.id}
+              style={[styles.chatBubble, message.role === "assistant" ? styles.assistantBubble : styles.userBubble]}
+            >
+              <Text style={[styles.chatText, message.role === "user" && styles.userChatText]}>{message.text}</Text>
+            </View>
+          ))}
+        </View>
+        {pendingAction ? (
+          <View style={styles.actionRow}>
+            <Pressable onPress={() => handleCoachAction(pendingAction, true)} style={styles.actionButton}>
+              <Text style={styles.actionButtonText}>Make this change now</Text>
+            </Pressable>
+            <Pressable onPress={() => handleCoachAction(pendingAction, false)} style={styles.secondaryActionButton}>
+              <Text style={styles.secondaryActionText}>Not now</Text>
+            </Pressable>
+          </View>
+        ) : null}
+        <TextInput
+          onChangeText={setCoachInput}
+          placeholder="Ask a question or request a change..."
+          placeholderTextColor={colors.muted}
+          style={styles.coachInput}
+          value={coachInput}
+        />
+        <Pressable onPress={handleCoachSend} style={styles.coachSend}>
+          <Text style={styles.coachSendText}>Ask PulsePilot coach</Text>
+        </Pressable>
+      </Card>
     </ScreenContainer>
   );
 }
@@ -174,5 +339,73 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontSize: 13,
     fontWeight: "700"
+  },
+  coachThread: {
+    gap: spacing.sm
+  },
+  chatBubble: {
+    borderRadius: radius.lg,
+    paddingHorizontal: 14,
+    paddingVertical: 12
+  },
+  assistantBubble: {
+    backgroundColor: colors.surfaceMuted
+  },
+  userBubble: {
+    alignSelf: "flex-end",
+    backgroundColor: colors.accent
+  },
+  chatText: {
+    color: colors.text,
+    lineHeight: 20
+  },
+  userChatText: {
+    color: "#FFFFFF"
+  },
+  actionRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm
+  },
+  actionButton: {
+    alignItems: "center",
+    backgroundColor: colors.accent,
+    borderRadius: radius.pill,
+    paddingHorizontal: 16,
+    paddingVertical: 12
+  },
+  actionButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "800"
+  },
+  secondaryActionButton: {
+    alignItems: "center",
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.pill,
+    paddingHorizontal: 16,
+    paddingVertical: 12
+  },
+  secondaryActionText: {
+    color: colors.text,
+    fontWeight: "800"
+  },
+  coachInput: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    color: colors.text,
+    paddingHorizontal: 14,
+    paddingVertical: 12
+  },
+  coachSend: {
+    alignItems: "center",
+    backgroundColor: colors.accent,
+    borderRadius: radius.pill,
+    paddingVertical: 14
+  },
+  coachSendText: {
+    color: "#FFFFFF",
+    fontWeight: "800"
   }
 });

@@ -71,7 +71,8 @@ export default function NutritionScreen() {
     saveRecipeFromFoods,
     scanBarcode,
     updateNutritionTargets,
-    logWeight
+    logWeight,
+    updateProfile
   } = useAppState();
   const [form, setForm] = useState<FoodForm>(emptyForm);
   const [mealName, setMealName] = useState("");
@@ -96,12 +97,27 @@ export default function NutritionScreen() {
   };
 
   const autoTargets = useMemo(
-    () => getNutritionTargetsForGoal(profile.goal, profile.currentWeightLb, profile.age, goalSettings[profile.goal]),
-    [goalSettings, profile.age, profile.currentWeightLb, profile.goal]
+    () =>
+      getNutritionTargetsForGoal(
+        profile.goal,
+        profile.currentWeightLb,
+        profile.age,
+        goalSettings[profile.goal],
+        profile.heightInches,
+        profile.biologicalSex
+      ),
+    [goalSettings, profile.age, profile.currentWeightLb, profile.goal, profile.heightInches, profile.biologicalSex]
   );
   const fatLossDetails = useMemo(
-    () => getFatLossGoalDetails(profile.currentWeightLb, goalSettings.fatloss),
-    [goalSettings.fatloss, profile.currentWeightLb]
+    () =>
+      getFatLossGoalDetails(
+        profile.currentWeightLb,
+        profile.age,
+        goalSettings.fatloss,
+        profile.heightInches,
+        profile.biologicalSex
+      ),
+    [goalSettings.fatloss, profile.currentWeightLb, profile.age, profile.heightInches, profile.biologicalSex]
   );
   const selectedRecipeIds = useMemo(() => foodLog.slice(0, 4).map((item) => item.id), [foodLog]);
   const trendRange = useMemo(() => {
@@ -241,6 +257,39 @@ export default function NutritionScreen() {
             style={styles.fullInput}
             value={fatLossSettings.goalWeightLb ? String(fatLossSettings.goalWeightLb) : ""}
           />
+          <Text style={styles.label}>Height</Text>
+          <TextInput
+            keyboardType="numeric"
+            onChangeText={(value) =>
+              updateProfile({
+                ...profile,
+                heightInches: value.trim() ? Number(value) : undefined
+              })
+            }
+            placeholder="Optional height in inches"
+            placeholderTextColor={colors.muted}
+            style={styles.fullInput}
+            value={profile.heightInches ? String(profile.heightInches) : ""}
+          />
+          <Text style={styles.label}>Sex</Text>
+          <View style={styles.goalRow}>
+            {(["male", "female"] as const).map((sex) => (
+              <Pressable
+                key={sex}
+                onPress={() =>
+                  updateProfile({
+                    ...profile,
+                    biologicalSex: sex
+                  })
+                }
+                style={[styles.goalButton, profile.biologicalSex === sex && styles.goalButtonActive]}
+              >
+                <Text style={[styles.goalButtonText, profile.biologicalSex === sex && styles.goalButtonTextActive]}>
+                  {sex === "male" ? "Male" : "Female"}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
           <Text style={styles.label}>Activity level</Text>
           <View style={styles.goalRow}>
             {activityOptions.map((option) => (
@@ -304,26 +353,31 @@ export default function NutritionScreen() {
               ))}
             </View>
           </View>
-          {fatLossDetails ? (
-            <View style={styles.helperBlock}>
-              <Text style={styles.helper}>
-                Goal: lose {fatLossDetails.poundsToLose} lb to reach {fatLossDetails.targetWeight} lb in{" "}
-                {fatLossDetails.timeframeValue} {fatLossDetails.timeframeUnit}. That works out to about{" "}
-                {fatLossDetails.poundsPerWeek} lb per week.
-              </Text>
-              {fatLossDetails.isPaceCapped ? (
-                <Text style={styles.warningText}>
-                  Your requested pace is above the current recommended cap of {fatLossDetails.recommendedMaxWeeklyLoss}{" "}
-                  lb per week, so PulsePilot is using that capped pace for the calorie target instead of silently
-                  bottoming out.
+            {fatLossDetails ? (
+              <View style={styles.helperBlock}>
+                <Text style={styles.helper}>
+                  Goal: lose {fatLossDetails.poundsToLose} lb to reach {fatLossDetails.targetWeight} lb in{" "}
+                  {fatLossDetails.timeframeValue} {fatLossDetails.timeframeUnit}. That works out to about{" "}
+                  {fatLossDetails.requestedPoundsPerWeek} lb per week.
                 </Text>
-              ) : null}
-              <Text style={styles.body}>
-                These fat-loss targets use your current weight, age, and selected activity level. Height/sex are not
-                collected yet, so this is still an estimate rather than a full metabolic calculation.
-              </Text>
-            </View>
-          ) : (
+                <Text style={styles.body}>
+                  Estimated maintenance: {fatLossDetails.maintenanceCalories} cal/day using{" "}
+                  {fatLossDetails.calculationMethod === "mifflin-st-jeor"
+                    ? "Mifflin-St Jeor + activity multiplier"
+                    : "weight / age / activity estimate"}
+                  .
+                </Text>
+                <Text style={styles.body}>
+                  Requested target: {fatLossDetails.requestedCalories} cal/day. Conservative reference target:{" "}
+                  {fatLossDetails.recommendedCalories} cal/day.
+                </Text>
+                {fatLossDetails.warningMessages.map((warning) => (
+                  <Text key={warning} style={styles.warningText}>
+                    {warning}
+                  </Text>
+                ))}
+              </View>
+            ) : (
             <Text style={styles.helper}>
               Leave goal weight or timeframe blank if you want the general cutting target instead of a timed weight-loss
               target.
@@ -648,7 +702,7 @@ function MacroBar({
   target: number;
   suffix: string;
 }) {
-  const progress = Math.min(current / Math.max(target, 1), 1);
+  const progress = Math.max(0, Math.min(current / Math.max(target, 1), 1));
 
   return (
     <View style={styles.macroBlock}>
@@ -660,7 +714,7 @@ function MacroBar({
         </Text>
       </View>
       <View style={styles.barTrack}>
-        <View style={[styles.barFill, { width: `${progress * 100}%` }]} />
+        {progress > 0 ? <View style={[styles.barFill, { width: `${progress * 100}%` }]} /> : null}
       </View>
     </View>
   );
