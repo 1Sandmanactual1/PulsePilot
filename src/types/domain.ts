@@ -172,13 +172,31 @@ export type SavedRecipe = {
   items: NutritionFoodEntry[];
 };
 
+export type ExerciseCategory =
+  | "Abs"
+  | "Back"
+  | "Biceps"
+  | "Cardio"
+  | "Chest"
+  | "Forearms"
+  | "Legs"
+  | "Shoulders"
+  | "Triceps";
+
+export type ExerciseMuscleTarget = {
+  muscle: string;
+  percent: number;
+};
+
 export type ExerciseDefinition = {
   id: string;
   name: string;
-  category: string;
+  aliases: string[];
+  category: ExerciseCategory;
   movementPattern: string;
   primaryMuscles: string[];
   secondaryMuscles: string[];
+  targetChart: ExerciseMuscleTarget[];
   whyItWorks: string;
   substitutions: string[];
 };

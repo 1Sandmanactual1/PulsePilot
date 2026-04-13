@@ -4,8 +4,8 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Card } from "@/components/Card";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { SectionHeader } from "@/components/SectionHeader";
+import { exerciseCategoryOrder, exerciseLibrary } from "@/data/exercise-library";
 import { useAppState } from "@/providers/AppStateProvider";
-import { exerciseLibrary } from "@/data/mock-data";
 import { colors, radius, spacing } from "@/theme/theme";
 
 export default function TrainingScreen() {
@@ -18,9 +18,11 @@ export default function TrainingScreen() {
     updateWorkoutExercise,
     removeWorkoutExercise
   } = useAppState();
+
   const [selectedDayId, setSelectedDayId] = useState(weeklyPlan[0]?.id ?? "mon");
   const [customExerciseName, setCustomExerciseName] = useState("");
   const [customCategory, setCustomCategory] = useState("");
+  const [librarySearch, setLibrarySearch] = useState("");
 
   const importedExercises = useMemo(() => {
     const lookup = new Map<string, { name: string; category: string; count: number }>();
@@ -42,6 +44,29 @@ export default function TrainingScreen() {
     return [...lookup.values()].sort((left, right) => right.count - left.count);
   }, [fitNotesSummary]);
 
+  const groupedLibrary = useMemo(() => {
+    const query = librarySearch.trim().toLowerCase();
+    const filtered = exerciseLibrary.filter((exercise) => {
+      if (!query) {
+        return true;
+      }
+
+      return (
+        exercise.name.toLowerCase().includes(query) ||
+        exercise.aliases.some((alias) => alias.toLowerCase().includes(query)) ||
+        exercise.primaryMuscles.some((muscle) => muscle.toLowerCase().includes(query)) ||
+        exercise.secondaryMuscles.some((muscle) => muscle.toLowerCase().includes(query))
+      );
+    });
+
+    return exerciseCategoryOrder
+      .map((category) => ({
+        category,
+        exercises: filtered.filter((exercise) => exercise.category === category)
+      }))
+      .filter((group) => group.exercises.length > 0);
+  }, [librarySearch]);
+
   async function handleAddCustomExercise() {
     if (!customExerciseName.trim()) {
       return;
@@ -52,12 +77,14 @@ export default function TrainingScreen() {
     setCustomCategory("");
   }
 
+  const selectedDayLabel = weeklyPlan.find((day) => day.id === selectedDayId)?.dayLabel ?? "selected day";
+
   return (
     <ScreenContainer>
       <SectionHeader
         eyebrow="Training"
         title="Interactive workout builder"
-        description="FitNotes should feed PulsePilot's analysis, but PulsePilot should be where you can tweak the split, add lifts, and keep the plan interactive."
+        description="FitNotes should feed PulsePilot's analysis, but PulsePilot should be where you can tweak the split, add lifts, browse exercises, and understand exactly what each movement trains."
       />
 
       <Card>
@@ -71,7 +98,7 @@ export default function TrainingScreen() {
 
       <Card>
         <Text style={styles.cardTitle}>Workout editor</Text>
-        <Text style={styles.body}>Add, remove, and tune exercises by day. This is the beginning of making PulsePilot your main training surface.</Text>
+        <Text style={styles.body}>Add, remove, and tune exercises by day. PulsePilot should be the place where your split actually gets edited.</Text>
         <View style={styles.segmentRow}>
           {weeklyPlan.map((day) => (
             <Pressable
@@ -136,7 +163,7 @@ export default function TrainingScreen() {
 
       <Card>
         <Text style={styles.cardTitle}>Add workout to selected day</Text>
-        <Text style={styles.helper}>Selected day: {weeklyPlan.find((day) => day.id === selectedDayId)?.dayLabel}</Text>
+        <Text style={styles.helper}>Selected day: {selectedDayLabel}</Text>
         <TextInput
           onChangeText={setCustomExerciseName}
           placeholder="Exercise name"
@@ -157,10 +184,10 @@ export default function TrainingScreen() {
       </Card>
 
       <Card>
-        <Text style={styles.cardTitle}>FitNotes exercise list</Text>
-        <Text style={styles.body}>These are exercises PulsePilot found in your FitNotes import. Tap one to add it to the selected day.</Text>
+        <Text style={styles.cardTitle}>FitNotes exercise history</Text>
+        <Text style={styles.body}>These are exercises PulsePilot found in your FitNotes import. Tap one to add it back into the selected day.</Text>
         {importedExercises.length ? (
-          importedExercises.slice(0, 12).map((exercise) => (
+          importedExercises.slice(0, 16).map((exercise) => (
             <Pressable
               key={exercise.name}
               onPress={() => addWorkoutExercise(selectedDayId, exercise.name, exercise.category)}
@@ -168,9 +195,7 @@ export default function TrainingScreen() {
             >
               <View>
                 <Text style={styles.exerciseName}>{exercise.name}</Text>
-                <Text style={styles.exerciseCategory}>
-                  {exercise.category} · {exercise.count} logged sets
-                </Text>
+                <Text style={styles.exerciseCategory}>{exercise.category} - {exercise.count} logged sets</Text>
               </View>
               <Text style={styles.addInline}>Add</Text>
             </Pressable>
@@ -192,13 +217,55 @@ export default function TrainingScreen() {
       </Card>
 
       <Card>
-        <Text style={styles.cardTitle}>Exercise intelligence</Text>
-        {exerciseLibrary.map((exercise) => (
-          <View key={exercise.id} style={styles.suggestion}>
-            <Text style={styles.suggestionTitle}>{exercise.name}</Text>
-            <Text style={styles.body}>Primary: {exercise.primaryMuscles.join(", ")}</Text>
-            <Text style={styles.body}>Secondary: {exercise.secondaryMuscles.join(", ")}</Text>
-            <Text style={styles.impact}>{exercise.whyItWorks}</Text>
+        <Text style={styles.cardTitle}>Exercise library</Text>
+        <Text style={styles.body}>
+          Categories are alphabetical, exercises are alphabetical inside each category, aliases are shown, and each exercise includes a muscle-emphasis chart.
+        </Text>
+        <TextInput
+          onChangeText={setLibrarySearch}
+          placeholder="Search exercises, aliases, or muscles"
+          placeholderTextColor={colors.muted}
+          style={styles.fullInput}
+          value={librarySearch}
+        />
+
+        {groupedLibrary.map((group) => (
+          <View key={group.category} style={styles.categorySection}>
+            <Text style={styles.categoryHeading}>{group.category}</Text>
+            {group.exercises.map((exercise) => (
+              <View key={exercise.id} style={styles.libraryCard}>
+                <View style={styles.exerciseHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.exerciseName}>{exercise.name}</Text>
+                    {exercise.aliases.length ? <Text style={styles.aliasText}>Also called: {exercise.aliases.join(", ")}</Text> : null}
+                    <Text style={styles.exerciseCategory}>{exercise.movementPattern}</Text>
+                  </View>
+                  <Pressable
+                    onPress={() => addWorkoutExercise(selectedDayId, exercise.name, exercise.category)}
+                    style={styles.inlineAction}
+                  >
+                    <Text style={styles.inlineActionText}>Add to {selectedDayLabel}</Text>
+                  </Pressable>
+                </View>
+
+                <Text style={styles.body}>Primary: {exercise.primaryMuscles.join(", ")}</Text>
+                <Text style={styles.body}>Secondary: {exercise.secondaryMuscles.join(", ")}</Text>
+                <Text style={styles.impact}>{exercise.whyItWorks}</Text>
+
+                <View style={styles.targetChart}>
+                  <Text style={styles.chartTitle}>Muscle emphasis</Text>
+                  {exercise.targetChart.map((target) => (
+                    <View key={`${exercise.id}-${target.muscle}`} style={styles.chartRow}>
+                      <Text style={styles.chartLabel}>{target.muscle}</Text>
+                      <View style={styles.chartTrack}>
+                        <View style={[styles.chartFill, { width: `${target.percent}%` }]} />
+                      </View>
+                      <Text style={styles.chartPercent}>{target.percent}%</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ))}
           </View>
         ))}
       </Card>
@@ -344,6 +411,78 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontSize: 13,
     fontWeight: "800"
+  },
+  categorySection: {
+    borderTopColor: colors.border,
+    borderTopWidth: 1,
+    gap: spacing.sm,
+    paddingTop: spacing.md
+  },
+  categoryHeading: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "900"
+  },
+  libraryCard: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    gap: spacing.sm,
+    padding: spacing.md
+  },
+  aliasText: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 18
+  },
+  inlineAction: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 10
+  },
+  inlineActionText: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: "800"
+  },
+  targetChart: {
+    gap: 8
+  },
+  chartTitle: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  chartRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm
+  },
+  chartLabel: {
+    color: colors.muted,
+    flexBasis: 140,
+    flexShrink: 0,
+    fontSize: 12
+  },
+  chartTrack: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.pill,
+    flex: 1,
+    height: 10,
+    overflow: "hidden"
+  },
+  chartFill: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.pill,
+    height: "100%"
+  },
+  chartPercent: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: "700",
+    width: 36
   },
   suggestion: {
     borderTopColor: colors.border,

@@ -2,7 +2,6 @@ import {
   AppPreferences,
   CoachingSuggestion,
   DailyVitals,
-  ExerciseDefinition,
   GoalSettingsMap,
   NutritionDayPlan,
   NutritionFoodEntry,
@@ -19,6 +18,7 @@ import {
   WeightLogEntry,
   WorkoutDay
 } from "@/types/domain";
+import { exerciseLibrary } from "@/data/exercise-library";
 
 export const mockProfile: UserProfile = {
   fullName: "Brandt",
@@ -126,29 +126,6 @@ export const barcodeLibrary: BarcodeFoodEntry[] = [
 
 export const defaultWeightHistory: WeightLogEntry[] = [];
 
-export const exerciseLibrary: ExerciseDefinition[] = [
-  {
-    id: "rdl",
-    name: "Romanian Deadlift",
-    category: "Posterior Chain",
-    movementPattern: "Hip hinge",
-    primaryMuscles: ["Hamstrings", "Glutes"],
-    secondaryMuscles: ["Spinal erectors", "Adductors", "Forearms"],
-    whyItWorks: "Builds eccentric hamstring strength and trains hip extension under load.",
-    substitutions: ["Good Morning", "Cable Pull-Through", "45-Degree Back Extension"]
-  },
-  {
-    id: "barbell-row",
-    name: "Barbell Row",
-    category: "Back",
-    movementPattern: "Horizontal pull",
-    primaryMuscles: ["Lats", "Mid back"],
-    secondaryMuscles: ["Rear delts", "Biceps", "Spinal erectors"],
-    whyItWorks: "Builds upper-back thickness and reinforces loaded pulling strength.",
-    substitutions: ["Chest Supported Row", "Seal Row", "Cable Row"]
-  }
-];
-
 export const mockWeeklyPlan: WorkoutDay[] = [
   {
     id: "mon",
@@ -176,8 +153,8 @@ export const mockWeeklyPlan: WorkoutDay[] = [
     focus: "Legs",
     exercises: [
       { id: "wed-1", exerciseId: "back-squat", exerciseName: "Back Squat", category: "Legs", sets: 4, reps: "5-6", weightLb: 255 },
-      { id: "wed-2", exerciseId: "rdl", exerciseName: "Romanian Deadlift", category: "Posterior Chain", sets: 3, reps: "8", weightLb: 225 },
-      { id: "wed-3", exerciseId: "leg-curl", exerciseName: "Leg Curl", category: "Hamstrings", sets: 3, reps: "12", weightLb: 105 }
+      { id: "wed-2", exerciseId: "romanian-deadlift", exerciseName: "Romanian Deadlift", category: "Legs", sets: 3, reps: "8", weightLb: 225 },
+      { id: "wed-3", exerciseId: "leg-curl", exerciseName: "Leg Curl", category: "Legs", sets: 3, reps: "12", weightLb: 105 }
     ]
   }
 ];
