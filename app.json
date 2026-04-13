@@ -4,11 +4,13 @@
     "slug": "pulsepilot",
     "scheme": "pulsepilot",
     "version": "0.1.0",
+    "icon": "./assets/pulse-pilot-logo.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "splash": {
+      "image": "./assets/pulse-pilot-logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#F4EFE5"
+      "backgroundColor": "#050728"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -22,13 +24,19 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "static"
+      "output": "static",
+      "favicon": "./assets/pulse-pilot-emblem.png"
     },
     "ios": {
       "supportsTablet": true,
+      "icon": "./assets/pulse-pilot-logo.png",
       "bundleIdentifier": "com.pulsepilot.app"
     },
     "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/pulse-pilot-emblem.png",
+        "backgroundColor": "#050728"
+      },
       "package": "com.pulsepilot.app"
     },
     "extra": {

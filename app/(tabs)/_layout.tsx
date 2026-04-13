@@ -1,8 +1,11 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Redirect, Tabs } from "expo-router";
+import { Image, StyleSheet } from "react-native";
 
 import { useAuth } from "@/providers/AuthProvider";
 import { colors } from "@/theme/theme";
+
+const settingsLogo = require("../../assets/pulse-pilot-emblem.png");
 
 export default function TabsLayout() {
   const { session } = useAuth();
@@ -58,10 +61,29 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: "Settings",
-          tabBarIcon: ({ color, size }) => <Ionicons color={color} name="options" size={size} />
+          title: "Account",
+          tabBarIcon: ({ focused, size }) => (
+            <Image
+              source={settingsLogo}
+              style={[
+                styles.logoIcon,
+                {
+                  height: size + 8,
+                  opacity: focused ? 1 : 0.72,
+                  width: size + 8
+                }
+              ]}
+            />
+          )
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  logoIcon: {
+    borderRadius: 999,
+    overflow: "hidden"
+  }
+});
