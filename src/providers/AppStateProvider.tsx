@@ -5,9 +5,11 @@ import {
   mockCheckIns,
   mockDailyMealPlan,
   defaultNutritionTargets,
+  defaultRecipes,
   defaultSavedFoods,
   defaultSavedMeals,
   defaultWeightHistory,
+  barcodeLibrary,
   mockFoodLog,
   mockNutrition,
   mockProfile,
@@ -44,6 +46,7 @@ import {
   NutritionFoodEntry,
   NutritionSnapshot,
   NutritionTargets,
+  SavedRecipe,
   SavedFood,
   SavedMealTemplate,
   UserProfile,
@@ -70,6 +73,7 @@ type AppStateContextValue = {
   foodLog: NutritionFoodEntry[];
   savedFoods: SavedFood[];
   savedMeals: SavedMealTemplate[];
+  recipes: SavedRecipe[];
   weightHistory: WeightLogEntry[];
   vitalHistory: VitalHistoryPoint[];
   vitalsStatus: VitalSyncStatus;
@@ -90,6 +94,11 @@ type AppStateContextValue = {
   quickAddSavedFood: (foodId: string) => Promise<void>;
   quickAddSavedMeal: (mealId: string) => Promise<void>;
   saveMealFromCurrentFoods: (name: string, meal: NutritionFoodEntry["meal"]) => Promise<void>;
+  updateSavedMeal: (mealId: string, name: string) => Promise<void>;
+  removeSavedMeal: (mealId: string) => Promise<void>;
+  quickAddRecipe: (recipeId: string, meal?: NutritionFoodEntry["meal"]) => Promise<void>;
+  saveRecipeFromFoods: (name: string, servings: number, itemIds: string[]) => Promise<void>;
+  scanBarcode: (barcode: string) => Promise<{ matched: boolean; foodName?: string }>;
   updateNutritionTargets: (next: NutritionTargets) => Promise<void>;
   logWeight: (weightLb: number, note?: string) => Promise<void>;
 };
@@ -105,6 +114,7 @@ const FOOD_LOG_KEY = "pulsepilot.food-log";
 const NUTRITION_TARGETS_KEY = "pulsepilot.nutrition-targets";
 const SAVED_FOODS_KEY = "pulsepilot.saved-foods";
 const SAVED_MEALS_KEY = "pulsepilot.saved-meals";
+const RECIPES_KEY = "pulsepilot.recipes";
 const WEIGHT_HISTORY_KEY = "pulsepilot.weight-history";
 
 export function AppStateProvider({ children }: PropsWithChildren) {
@@ -118,6 +128,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
   const [nutritionTargets, setNutritionTargets] = useState<NutritionTargets>(defaultNutritionTargets);
   const [savedFoods, setSavedFoods] = useState<SavedFood[]>(defaultSavedFoods);
   const [savedMeals, setSavedMeals] = useState<SavedMealTemplate[]>(defaultSavedMeals);
+  const [recipes, setRecipes] = useState<SavedRecipe[]>(defaultRecipes);
   const [weightHistory, setWeightHistory] = useState<WeightLogEntry[]>(defaultWeightHistory);
   const [vitalHistory, setVitalHistory] = useState<VitalHistoryPoint[]>(mockVitalHistory);
   const [vitalsStatus, setVitalsStatus] = useState<VitalSyncStatus>("demo");
@@ -139,6 +150,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
       const storedNutritionTargets = await getJson(NUTRITION_TARGETS_KEY, defaultNutritionTargets);
       const storedSavedFoods = await getJson(SAVED_FOODS_KEY, defaultSavedFoods);
       const storedSavedMeals = await getJson(SAVED_MEALS_KEY, defaultSavedMeals);
+      const storedRecipes = await getJson(RECIPES_KEY, defaultRecipes);
       const storedWeightHistory = await getJson(WEIGHT_HISTORY_KEY, defaultWeightHistory);
       let nextProfile = storedProfile;
       let nextVitals = mockVitals;
@@ -149,6 +161,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
       let nextNutritionTargets = storedNutritionTargets;
       let nextSavedFoods = storedSavedFoods;
       let nextSavedMeals = storedSavedMeals;
+      let nextRecipes = storedRecipes;
       let nextWeightHistory = storedWeightHistory;
       let nextVitalHistory = mockVitalHistory;
       let nextVitalsStatus: VitalSyncStatus = "demo";
@@ -214,6 +227,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
       setNutritionTargets(macroTargets);
       setSavedFoods(nextSavedFoods);
       setSavedMeals(nextSavedMeals);
+      setRecipes(nextRecipes);
       setWeightHistory(nextWeightHistory);
       setVitalHistory(nextVitalHistory);
       setVitalsStatus(nextVitalsStatus);
@@ -476,6 +490,65 @@ export function AppStateProvider({ children }: PropsWithChildren) {
     await setJson(SAVED_MEALS_KEY, next);
   }
 
+  async function updateSavedMeal(mealId: string, name: string) {
+    const next = savedMeals.map((meal) => (meal.id === mealId ? { ...meal, name: name.trim() || meal.name } : meal));
+    setSavedMeals(next);
+    await setJson(SAVED_MEALS_KEY, next);
+  }
+
+  async function removeSavedMeal(mealId: string) {
+    const next = savedMeals.filter((meal) => meal.id !== mealId);
+    setSavedMeals(next);
+    await setJson(SAVED_MEALS_KEY, next);
+  }
+
+  async function quickAddRecipe(recipeId: string, meal?: NutritionFoodEntry["meal"]) {
+    const recipe = recipes.find((item) => item.id === recipeId);
+    if (!recipe) {
+      return;
+    }
+
+    for (const item of recipe.items) {
+      await addFoodLogEntry({
+        name: item.name,
+        meal: meal ?? item.meal,
+        calories: Math.round(item.calories / Math.max(recipe.servings, 1)),
+        proteinGrams: Math.round(item.proteinGrams / Math.max(recipe.servings, 1)),
+        carbsGrams: Math.round(item.carbsGrams / Math.max(recipe.servings, 1)),
+        fatGrams: Math.round(item.fatGrams / Math.max(recipe.servings, 1))
+      });
+    }
+  }
+
+  async function saveRecipeFromFoods(name: string, servings: number, itemIds: string[]) {
+    const items = foodLog.filter((entry) => itemIds.includes(entry.id));
+    if (!items.length || !name.trim()) {
+      return;
+    }
+
+    const next = [
+      {
+        id: `recipe-${Date.now()}`,
+        name: name.trim(),
+        servings: Math.max(servings, 1),
+        items: items.map((item) => ({ ...item, id: `${item.id}-recipe` }))
+      },
+      ...recipes
+    ];
+    setRecipes(next);
+    await setJson(RECIPES_KEY, next);
+  }
+
+  async function scanBarcode(barcode: string) {
+    const found = barcodeLibrary.find((entry) => entry.barcode === barcode.trim());
+    if (!found) {
+      return { matched: false };
+    }
+
+    await addFoodLogEntry(found.food);
+    return { matched: true, foodName: found.food.name };
+  }
+
   async function updateNutritionTargets(next: NutritionTargets) {
     setNutritionTargets(next);
     await setJson(NUTRITION_TARGETS_KEY, next);
@@ -518,6 +591,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
         foodLog,
         savedFoods,
         savedMeals,
+        recipes,
         weightHistory,
         vitalHistory,
         vitalsStatus,
@@ -538,6 +612,11 @@ export function AppStateProvider({ children }: PropsWithChildren) {
         quickAddSavedFood,
         quickAddSavedMeal,
         saveMealFromCurrentFoods,
+        updateSavedMeal,
+        removeSavedMeal,
+        quickAddRecipe,
+        saveRecipeFromFoods,
+        scanBarcode,
         updateNutritionTargets,
         logWeight
       }}

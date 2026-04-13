@@ -137,6 +137,18 @@ export type WeightLogEntry = {
   note?: string;
 };
 
+export type BarcodeFoodEntry = {
+  barcode: string;
+  food: Omit<NutritionFoodEntry, "id">;
+};
+
+export type SavedRecipe = {
+  id: string;
+  name: string;
+  servings: number;
+  items: NutritionFoodEntry[];
+};
+
 export type ExerciseDefinition = {
   id: string;
   name: string;

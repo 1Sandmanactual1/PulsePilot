@@ -45,6 +45,7 @@ export default function NutritionScreen() {
     nutritionTargets,
     savedFoods,
     savedMeals,
+    recipes,
     weightHistory,
     setGoal,
     addFoodLogEntry,
@@ -53,11 +54,17 @@ export default function NutritionScreen() {
     quickAddSavedFood,
     quickAddSavedMeal,
     saveMealFromCurrentFoods,
+    updateSavedMeal,
+    removeSavedMeal,
+    quickAddRecipe,
+    saveRecipeFromFoods,
+    scanBarcode,
     updateNutritionTargets,
     logWeight
   } = useAppState();
   const [form, setForm] = useState<FoodForm>(emptyForm);
   const [mealName, setMealName] = useState("");
+  const [mealEditDrafts, setMealEditDrafts] = useState<Record<string, string>>({});
   const [targetDraft, setTargetDraft] = useState({
     calories: String(nutritionTargets.calories),
     proteinGrams: String(nutritionTargets.proteinGrams),
@@ -65,8 +72,26 @@ export default function NutritionScreen() {
     fatGrams: String(nutritionTargets.fatGrams)
   });
   const [weightDraft, setWeightDraft] = useState(String(profile.currentWeightLb));
+  const [barcodeDraft, setBarcodeDraft] = useState("");
+  const [barcodeMessage, setBarcodeMessage] = useState<string | null>(null);
+  const [recipeName, setRecipeName] = useState("");
+  const [recipeServings, setRecipeServings] = useState("4");
 
-  const autoTargets = useMemo(() => getNutritionTargetsForGoal(profile.goal, profile.currentWeightLb), [profile.goal, profile.currentWeightLb]);
+  const autoTargets = useMemo(
+    () => getNutritionTargetsForGoal(profile.goal, profile.currentWeightLb),
+    [profile.goal, profile.currentWeightLb]
+  );
+  const selectedRecipeIds = useMemo(() => foodLog.slice(0, 4).map((item) => item.id), [foodLog]);
+  const trendRange = useMemo(() => {
+    if (!weightHistory.length) {
+      return { min: 0, max: 0 };
+    }
+    const values = weightHistory.map((entry) => entry.weightLb);
+    return {
+      min: Math.min(...values),
+      max: Math.max(...values)
+    };
+  }, [weightHistory]);
 
   async function handleAddFood() {
     if (!form.name.trim()) {
@@ -102,12 +127,35 @@ export default function NutritionScreen() {
     await logWeight(nextWeight, "Logged from nutrition tab");
   }
 
+  async function handleBarcodeLookup() {
+    if (!barcodeDraft.trim()) {
+      return;
+    }
+    const result = await scanBarcode(barcodeDraft);
+    setBarcodeMessage(
+      result.matched
+        ? `Barcode matched and added "${result.foodName}" to your diary.`
+        : "Barcode not found in PulsePilot yet. Add the food manually now, then save it for faster logging next time."
+    );
+    if (result.matched) {
+      setBarcodeDraft("");
+    }
+  }
+
+  async function handleSaveRecipe() {
+    if (!recipeName.trim()) {
+      return;
+    }
+    await saveRecipeFromFoods(recipeName, Number(recipeServings) || 1, selectedRecipeIds);
+    setRecipeName("");
+  }
+
   return (
     <ScreenContainer>
       <SectionHeader
         eyebrow="Nutrition"
         title="PulsePilot nutrition engine"
-        description="PulsePilot now owns the MyFitnessPal-style workflow directly: goals, targets, food logging, saved foods, saved meals, and weight tracking."
+        description="PulsePilot now owns the nutrition workflow directly: goals, targets, food logging, barcode entry, recipes, saved foods, saved meals, and weight tracking."
       />
 
       <Card>
@@ -130,45 +178,16 @@ export default function NutritionScreen() {
 
       <Card>
         <Text style={styles.cardTitle}>Custom targets</Text>
-        <Text style={styles.body}>MyFitnessPal-style calorie and macro goal editing now lives directly in PulsePilot.</Text>
         <Text style={styles.helper}>
           Auto target suggestion for {getGoalLabel(profile.goal)} at {profile.currentWeightLb} lb: {autoTargets.calories} cal / P {autoTargets.proteinGrams} / C {autoTargets.carbsGrams} / F {autoTargets.fatGrams}
         </Text>
         <View style={styles.inputRow}>
-          <TextInput
-            keyboardType="numeric"
-            onChangeText={(value) => setTargetDraft((current) => ({ ...current, calories: value }))}
-            placeholder="Calories"
-            placeholderTextColor={colors.muted}
-            style={styles.miniInput}
-            value={targetDraft.calories}
-          />
-          <TextInput
-            keyboardType="numeric"
-            onChangeText={(value) => setTargetDraft((current) => ({ ...current, proteinGrams: value }))}
-            placeholder="Protein"
-            placeholderTextColor={colors.muted}
-            style={styles.miniInput}
-            value={targetDraft.proteinGrams}
-          />
+          <TextInput keyboardType="numeric" onChangeText={(value) => setTargetDraft((current) => ({ ...current, calories: value }))} placeholder="Calories" placeholderTextColor={colors.muted} style={styles.miniInput} value={targetDraft.calories} />
+          <TextInput keyboardType="numeric" onChangeText={(value) => setTargetDraft((current) => ({ ...current, proteinGrams: value }))} placeholder="Protein" placeholderTextColor={colors.muted} style={styles.miniInput} value={targetDraft.proteinGrams} />
         </View>
         <View style={styles.inputRow}>
-          <TextInput
-            keyboardType="numeric"
-            onChangeText={(value) => setTargetDraft((current) => ({ ...current, carbsGrams: value }))}
-            placeholder="Carbs"
-            placeholderTextColor={colors.muted}
-            style={styles.miniInput}
-            value={targetDraft.carbsGrams}
-          />
-          <TextInput
-            keyboardType="numeric"
-            onChangeText={(value) => setTargetDraft((current) => ({ ...current, fatGrams: value }))}
-            placeholder="Fat"
-            placeholderTextColor={colors.muted}
-            style={styles.miniInput}
-            value={targetDraft.fatGrams}
-          />
+          <TextInput keyboardType="numeric" onChangeText={(value) => setTargetDraft((current) => ({ ...current, carbsGrams: value }))} placeholder="Carbs" placeholderTextColor={colors.muted} style={styles.miniInput} value={targetDraft.carbsGrams} />
+          <TextInput keyboardType="numeric" onChangeText={(value) => setTargetDraft((current) => ({ ...current, fatGrams: value }))} placeholder="Fat" placeholderTextColor={colors.muted} style={styles.miniInput} value={targetDraft.fatGrams} />
         </View>
         <Pressable onPress={handleSaveTargets} style={styles.addButton}>
           <Text style={styles.addButtonText}>Save nutrition targets</Text>
@@ -184,73 +203,38 @@ export default function NutritionScreen() {
       </Card>
 
       <Card>
-        <Text style={styles.cardTitle}>Quick log methods</Text>
-        <Text style={styles.helper}>PulsePilot now owns the diary. Barcode scan, meal scan, and recipe import are the next built-in logging helpers to add.</Text>
-        <View style={styles.quickLogGrid}>
-          <View style={styles.quickLogTile}><Text style={styles.quickLogTitle}>Food diary</Text><Text style={styles.body}>Active now</Text></View>
-          <View style={styles.quickLogTile}><Text style={styles.quickLogTitle}>Saved foods</Text><Text style={styles.body}>Active now</Text></View>
-          <View style={styles.quickLogTile}><Text style={styles.quickLogTitle}>Saved meals</Text><Text style={styles.body}>Active now</Text></View>
-          <View style={styles.quickLogTile}><Text style={styles.quickLogTitle}>Barcode scan</Text><Text style={styles.body}>Next</Text></View>
-          <View style={styles.quickLogTile}><Text style={styles.quickLogTitle}>Meal scan</Text><Text style={styles.body}>Next</Text></View>
-          <View style={styles.quickLogTile}><Text style={styles.quickLogTitle}>Recipe importer</Text><Text style={styles.body}>Next</Text></View>
-        </View>
+        <Text style={styles.cardTitle}>Barcode quick add</Text>
+        <Text style={styles.body}>This is the first built-in barcode flow. For now, PulsePilot matches against its own barcode library and can learn new foods through manual logging plus saved favorites.</Text>
+        <TextInput
+          onChangeText={setBarcodeDraft}
+          placeholder="Enter barcode number"
+          placeholderTextColor={colors.muted}
+          style={styles.fullInput}
+          value={barcodeDraft}
+        />
+        <Pressable onPress={handleBarcodeLookup} style={styles.addButton}>
+          <Text style={styles.addButtonText}>Lookup barcode</Text>
+        </Pressable>
+        {barcodeMessage ? <Text style={styles.helper}>{barcodeMessage}</Text> : null}
       </Card>
 
       <Card>
         <Text style={styles.cardTitle}>Log food in PulsePilot</Text>
-        <TextInput
-          onChangeText={(value) => setForm((current) => ({ ...current, name: value }))}
-          placeholder="Food name"
-          placeholderTextColor={colors.muted}
-          style={styles.fullInput}
-          value={form.name}
-        />
+        <TextInput onChangeText={(value) => setForm((current) => ({ ...current, name: value }))} placeholder="Food name" placeholderTextColor={colors.muted} style={styles.fullInput} value={form.name} />
         <View style={styles.segmentRow}>
           {(["breakfast", "lunch", "dinner", "snack"] as NutritionFoodEntry["meal"][]).map((meal) => (
-            <Pressable
-              key={meal}
-              onPress={() => setForm((current) => ({ ...current, meal }))}
-              style={[styles.segment, form.meal === meal && styles.segmentActive]}
-            >
+            <Pressable key={meal} onPress={() => setForm((current) => ({ ...current, meal }))} style={[styles.segment, form.meal === meal && styles.segmentActive]}>
               <Text style={[styles.segmentText, form.meal === meal && styles.segmentTextActive]}>{meal}</Text>
             </Pressable>
           ))}
         </View>
         <View style={styles.inputRow}>
-          <TextInput
-            keyboardType="numeric"
-            onChangeText={(value) => setForm((current) => ({ ...current, calories: value }))}
-            placeholder="Calories"
-            placeholderTextColor={colors.muted}
-            style={styles.miniInput}
-            value={form.calories}
-          />
-          <TextInput
-            keyboardType="numeric"
-            onChangeText={(value) => setForm((current) => ({ ...current, proteinGrams: value }))}
-            placeholder="Protein"
-            placeholderTextColor={colors.muted}
-            style={styles.miniInput}
-            value={form.proteinGrams}
-          />
+          <TextInput keyboardType="numeric" onChangeText={(value) => setForm((current) => ({ ...current, calories: value }))} placeholder="Calories" placeholderTextColor={colors.muted} style={styles.miniInput} value={form.calories} />
+          <TextInput keyboardType="numeric" onChangeText={(value) => setForm((current) => ({ ...current, proteinGrams: value }))} placeholder="Protein" placeholderTextColor={colors.muted} style={styles.miniInput} value={form.proteinGrams} />
         </View>
         <View style={styles.inputRow}>
-          <TextInput
-            keyboardType="numeric"
-            onChangeText={(value) => setForm((current) => ({ ...current, carbsGrams: value }))}
-            placeholder="Carbs"
-            placeholderTextColor={colors.muted}
-            style={styles.miniInput}
-            value={form.carbsGrams}
-          />
-          <TextInput
-            keyboardType="numeric"
-            onChangeText={(value) => setForm((current) => ({ ...current, fatGrams: value }))}
-            placeholder="Fat"
-            placeholderTextColor={colors.muted}
-            style={styles.miniInput}
-            value={form.fatGrams}
-          />
+          <TextInput keyboardType="numeric" onChangeText={(value) => setForm((current) => ({ ...current, carbsGrams: value }))} placeholder="Carbs" placeholderTextColor={colors.muted} style={styles.miniInput} value={form.carbsGrams} />
+          <TextInput keyboardType="numeric" onChangeText={(value) => setForm((current) => ({ ...current, fatGrams: value }))} placeholder="Fat" placeholderTextColor={colors.muted} style={styles.miniInput} value={form.fatGrams} />
         </View>
         <Pressable onPress={handleAddFood} style={styles.addButton}>
           <Text style={styles.addButtonText}>Add food entry</Text>
@@ -276,26 +260,56 @@ export default function NutritionScreen() {
 
       <Card>
         <Text style={styles.cardTitle}>Saved meals</Text>
-        <TextInput
-          onChangeText={setMealName}
-          placeholder="Name the current meal to save it"
-          placeholderTextColor={colors.muted}
-          style={styles.fullInput}
-          value={mealName}
-        />
+        <TextInput onChangeText={setMealName} placeholder="Name the current lunch to save it" placeholderTextColor={colors.muted} style={styles.fullInput} value={mealName} />
         <Pressable onPress={() => saveMealFromCurrentFoods(mealName, "lunch")} style={styles.smallAction}>
           <Text style={styles.smallActionText}>Save current lunch as meal</Text>
         </Pressable>
         {savedMeals.map((meal) => (
-          <View key={meal.id} style={styles.foodRow}>
+          <View key={meal.id} style={styles.savedMealCard}>
+            <TextInput
+              onChangeText={(value) => setMealEditDrafts((current) => ({ ...current, [meal.id]: value }))}
+              placeholder={meal.name}
+              placeholderTextColor={colors.muted}
+              style={styles.fullInput}
+              value={mealEditDrafts[meal.id] ?? meal.name}
+            />
+            <Text style={styles.foodMeta}>
+              {meal.meal} · {meal.items.length} items
+            </Text>
+            <View style={styles.actionGroup}>
+              <Pressable onPress={() => updateSavedMeal(meal.id, mealEditDrafts[meal.id] ?? meal.name)} style={styles.smallAction}>
+                <Text style={styles.smallActionText}>Save name</Text>
+              </Pressable>
+              <Pressable onPress={() => quickAddSavedMeal(meal.id)} style={styles.smallAction}>
+                <Text style={styles.smallActionText}>Quick add</Text>
+              </Pressable>
+              <Pressable onPress={() => removeSavedMeal(meal.id)} style={styles.removeButton}>
+                <Text style={styles.removeButtonText}>Delete</Text>
+              </Pressable>
+            </View>
+          </View>
+        ))}
+      </Card>
+
+      <Card>
+        <Text style={styles.cardTitle}>Recipe builder</Text>
+        <Text style={styles.body}>This builds the first built-in recipe system. Right now it uses your most recent logged foods as ingredients, then saves the recipe for quick add later.</Text>
+        <TextInput onChangeText={setRecipeName} placeholder="Recipe name" placeholderTextColor={colors.muted} style={styles.fullInput} value={recipeName} />
+        <TextInput keyboardType="numeric" onChangeText={setRecipeServings} placeholder="Servings" placeholderTextColor={colors.muted} style={styles.fullInput} value={recipeServings} />
+        <Text style={styles.helper}>Recipe source items: {foodLog.slice(0, 4).map((item) => item.name).join(", ") || "Log foods first"}</Text>
+        <Pressable onPress={handleSaveRecipe} style={styles.addButton}>
+          <Text style={styles.addButtonText}>Save recipe from recent foods</Text>
+        </Pressable>
+        {recipes.map((recipe) => (
+          <View key={recipe.id} style={styles.foodRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.foodName}>{meal.name}</Text>
+              <Text style={styles.foodName}>{recipe.name}</Text>
               <Text style={styles.foodMeta}>
-                {meal.meal} · {meal.items.length} items
+                {recipe.items.length} ingredients · {recipe.servings} servings
               </Text>
             </View>
-            <Pressable onPress={() => quickAddSavedMeal(meal.id)} style={styles.smallAction}>
-              <Text style={styles.smallActionText}>Quick add</Text>
+            <Pressable onPress={() => quickAddRecipe(recipe.id, "dinner")} style={styles.smallAction}>
+              <Text style={styles.smallActionText}>Add serving</Text>
             </Pressable>
           </View>
         ))}
@@ -324,25 +338,27 @@ export default function NutritionScreen() {
       </Card>
 
       <Card>
-        <Text style={styles.cardTitle}>Weight logging</Text>
-        <Text style={styles.body}>Weight trend is now part of PulsePilot directly instead of depending on MyFitnessPal.</Text>
-        <TextInput
-          keyboardType="numeric"
-          onChangeText={setWeightDraft}
-          placeholder="Current weight"
-          placeholderTextColor={colors.muted}
-          style={styles.fullInput}
-          value={weightDraft}
-        />
+        <Text style={styles.cardTitle}>Weight logging and trend</Text>
+        <Text style={styles.body}>PulsePilot now owns the weight log directly and uses it for nutrition coaching.</Text>
+        <TextInput keyboardType="numeric" onChangeText={setWeightDraft} placeholder="Current weight" placeholderTextColor={colors.muted} style={styles.fullInput} value={weightDraft} />
         <Pressable onPress={handleLogWeight} style={styles.addButton}>
           <Text style={styles.addButtonText}>Log weight</Text>
         </Pressable>
-        {weightHistory.slice(0, 5).map((entry) => (
-          <View key={entry.id} style={styles.row}>
-            <Text style={styles.label}>{new Date(entry.loggedAt).toLocaleDateString()}</Text>
-            <Text style={styles.value}>{entry.weightLb.toFixed(1)} lb</Text>
-          </View>
-        ))}
+        <View style={styles.weightTrend}>
+          {weightHistory.slice(0, 6).reverse().map((entry) => {
+            const spread = Math.max(trendRange.max - trendRange.min, 1);
+            const percent = ((entry.weightLb - trendRange.min) / spread) * 100;
+            return (
+              <View key={entry.id} style={styles.trendRow}>
+                <Text style={styles.label}>{new Date(entry.loggedAt).toLocaleDateString()}</Text>
+                <View style={styles.trendTrack}>
+                  <View style={[styles.trendFill, { width: `${Math.max(percent, 6)}%` }]} />
+                </View>
+                <Text style={styles.value}>{entry.weightLb.toFixed(1)} lb</Text>
+              </View>
+            );
+          })}
+        </View>
       </Card>
 
       <Card>
@@ -449,24 +465,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     height: "100%"
   },
-  quickLogGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm
-  },
-  quickLogTile: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    minWidth: 150,
-    padding: spacing.md
-  },
-  quickLogTitle: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: "800"
-  },
   segmentRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -529,6 +527,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingTop: spacing.sm
   },
+  savedMealCard: {
+    borderTopColor: colors.border,
+    borderTopWidth: 1,
+    gap: spacing.sm,
+    paddingTop: spacing.sm
+  },
   foodName: {
     color: colors.text,
     fontSize: 15,
@@ -564,6 +568,26 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontWeight: "800"
   },
+  weightTrend: {
+    gap: spacing.sm
+  },
+  trendRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm
+  },
+  trendTrack: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.pill,
+    flex: 1,
+    height: 10,
+    overflow: "hidden"
+  },
+  trendFill: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.pill,
+    height: "100%"
+  },
   dayRow: {
     borderTopColor: colors.border,
     borderTopWidth: 1,
@@ -575,16 +599,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "800"
   },
-  row: {
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingTop: spacing.sm
-  },
   label: {
     color: colors.muted,
-    fontSize: 14
+    fontSize: 14,
+    minWidth: 88
   },
   value: {
     color: colors.text,

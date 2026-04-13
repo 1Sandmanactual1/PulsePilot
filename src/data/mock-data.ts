@@ -7,8 +7,10 @@ import {
   NutritionFoodEntry,
   NutritionSnapshot,
   NutritionTargets,
+  BarcodeFoodEntry,
   SavedFood,
   SavedMealTemplate,
+  SavedRecipe,
   SyncRule,
   UserProfile,
   VitalHistoryPoint,
@@ -146,6 +148,79 @@ export const defaultSavedMeals: SavedMealTemplate[] = [
         fatGrams: 2
       }
     ]
+  }
+];
+
+export const defaultRecipes: SavedRecipe[] = [
+  {
+    id: "recipe-1",
+    name: "Chicken prep bowl",
+    servings: 4,
+    items: [
+      {
+        id: "recipe-item-1",
+        name: "Chicken breast",
+        meal: "lunch",
+        calories: 220,
+        proteinGrams: 42,
+        carbsGrams: 0,
+        fatGrams: 5
+      },
+      {
+        id: "recipe-item-2",
+        name: "Cooked rice",
+        meal: "lunch",
+        calories: 210,
+        proteinGrams: 4,
+        carbsGrams: 46,
+        fatGrams: 0
+      },
+      {
+        id: "recipe-item-3",
+        name: "Mixed vegetables",
+        meal: "lunch",
+        calories: 60,
+        proteinGrams: 3,
+        carbsGrams: 11,
+        fatGrams: 1
+      }
+    ]
+  }
+];
+
+export const barcodeLibrary: BarcodeFoodEntry[] = [
+  {
+    barcode: "041196910052",
+    food: {
+      name: "Greek yogurt cup",
+      meal: "snack",
+      calories: 150,
+      proteinGrams: 15,
+      carbsGrams: 12,
+      fatGrams: 2
+    }
+  },
+  {
+    barcode: "015300440371",
+    food: {
+      name: "Instant oats packet",
+      meal: "breakfast",
+      calories: 160,
+      proteinGrams: 6,
+      carbsGrams: 28,
+      fatGrams: 3
+    }
+  },
+  {
+    barcode: "036800291452",
+    food: {
+      name: "Protein bar",
+      meal: "snack",
+      calories: 200,
+      proteinGrams: 20,
+      carbsGrams: 22,
+      fatGrams: 7
+    }
   }
 ];
 
