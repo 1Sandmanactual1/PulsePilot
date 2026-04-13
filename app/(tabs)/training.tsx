@@ -1,12 +1,25 @@
 import { useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { Card } from "@/components/Card";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { SectionHeader } from "@/components/SectionHeader";
 import { exerciseCategoryOrder, exerciseLibrary } from "@/data/exercise-library";
 import { useAppState } from "@/providers/AppStateProvider";
+import { ExerciseCategory } from "@/types/domain";
 import { colors, radius, spacing } from "@/theme/theme";
+
+const categoryImages: Record<ExerciseCategory, any> = {
+  Abs: require("../../assets/category-abs.jpg"),
+  Back: require("../../assets/category-back.jpg"),
+  Biceps: require("../../assets/category-biceps.jpg"),
+  Cardio: require("../../assets/category-cardio.jpg"),
+  Chest: require("../../assets/category-chest.jpg"),
+  Forearms: require("../../assets/category-forearms.jpg"),
+  Legs: require("../../assets/category-legs.jpg"),
+  Shoulders: require("../../assets/category-shoulders.jpg"),
+  Triceps: require("../../assets/category-triceps.jpg")
+};
 
 export default function TrainingScreen() {
   const {
@@ -15,6 +28,7 @@ export default function TrainingScreen() {
     fitNotesImports,
     fitNotesSummary,
     addWorkoutExercise,
+    addWorkoutExercises,
     updateWorkoutExercise,
     removeWorkoutExercise
   } = useAppState();
@@ -22,7 +36,10 @@ export default function TrainingScreen() {
   const [selectedDayId, setSelectedDayId] = useState(weeklyPlan[0]?.id ?? "mon");
   const [customExerciseName, setCustomExerciseName] = useState("");
   const [customCategory, setCustomCategory] = useState("");
+  const [activeCategory, setActiveCategory] = useState<ExerciseCategory | null>(null);
   const [librarySearch, setLibrarySearch] = useState("");
+  const [multiSelectMode, setMultiSelectMode] = useState(false);
+  const [selectedExerciseIds, setSelectedExerciseIds] = useState<string[]>([]);
 
   const importedExercises = useMemo(() => {
     const lookup = new Map<string, { name: string; category: string; count: number }>();
@@ -44,9 +61,26 @@ export default function TrainingScreen() {
     return [...lookup.values()].sort((left, right) => right.count - left.count);
   }, [fitNotesSummary]);
 
-  const groupedLibrary = useMemo(() => {
+  const categoryCounts = useMemo(
+    () =>
+      exerciseCategoryOrder.map((category) => ({
+        category,
+        count: exerciseLibrary.filter((exercise) => exercise.category === category).length
+      })),
+    []
+  );
+
+  const activeExercises = useMemo(() => {
+    if (!activeCategory) {
+      return [];
+    }
+
     const query = librarySearch.trim().toLowerCase();
-    const filtered = exerciseLibrary.filter((exercise) => {
+    return exerciseLibrary.filter((exercise) => {
+      if (exercise.category !== activeCategory) {
+        return false;
+      }
+
       if (!query) {
         return true;
       }
@@ -58,14 +92,49 @@ export default function TrainingScreen() {
         exercise.secondaryMuscles.some((muscle) => muscle.toLowerCase().includes(query))
       );
     });
+  }, [activeCategory, librarySearch]);
 
-    return exerciseCategoryOrder
-      .map((category) => ({
-        category,
-        exercises: filtered.filter((exercise) => exercise.category === category)
-      }))
-      .filter((group) => group.exercises.length > 0);
-  }, [librarySearch]);
+  const selectedDayLabel = weeklyPlan.find((day) => day.id === selectedDayId)?.dayLabel ?? "selected day";
+
+  function resetCategoryDrillIn() {
+    setActiveCategory(null);
+    setLibrarySearch("");
+    setMultiSelectMode(false);
+    setSelectedExerciseIds([]);
+  }
+
+  function toggleSelection(exerciseId: string) {
+    setSelectedExerciseIds((current) =>
+      current.includes(exerciseId) ? current.filter((id) => id !== exerciseId) : [...current, exerciseId]
+    );
+  }
+
+  async function handleExercisePress(exerciseId: string, exerciseName: string, category: string) {
+    if (multiSelectMode) {
+      toggleSelection(exerciseId);
+      return;
+    }
+
+    await addWorkoutExercise(selectedDayId, exerciseName, category);
+  }
+
+  function handleExerciseLongPress(exerciseId: string) {
+    setMultiSelectMode(true);
+    setSelectedExerciseIds((current) => (current.includes(exerciseId) ? current : [...current, exerciseId]));
+  }
+
+  async function handleAddSelectedExercises() {
+    const payload = activeExercises
+      .filter((exercise) => selectedExerciseIds.includes(exercise.id))
+      .map((exercise) => ({
+        exerciseName: exercise.name,
+        category: exercise.category
+      }));
+
+    await addWorkoutExercises(selectedDayId, payload);
+    setMultiSelectMode(false);
+    setSelectedExerciseIds([]);
+  }
 
   async function handleAddCustomExercise() {
     if (!customExerciseName.trim()) {
@@ -77,14 +146,123 @@ export default function TrainingScreen() {
     setCustomCategory("");
   }
 
-  const selectedDayLabel = weeklyPlan.find((day) => day.id === selectedDayId)?.dayLabel ?? "selected day";
+  if (activeCategory) {
+    return (
+      <ScreenContainer>
+        <SectionHeader
+          eyebrow="Training"
+          title={`${activeCategory} exercises`}
+          description="Tap one exercise to add it straight to the selected day. Press and hold to enter multi-select mode, just like a list-management flow."
+        />
+
+        <Card>
+          <View style={styles.detailHeader}>
+            <Pressable onPress={resetCategoryDrillIn} style={styles.backButton}>
+              <Text style={styles.backButtonText}>Back to training</Text>
+            </Pressable>
+            <Text style={styles.helper}>Adding to: {selectedDayLabel}</Text>
+          </View>
+          <View style={styles.segmentRow}>
+            {weeklyPlan.map((day) => (
+              <Pressable
+                key={day.id}
+                onPress={() => setSelectedDayId(day.id)}
+                style={[styles.segment, selectedDayId === day.id && styles.segmentActive]}
+              >
+                <Text style={[styles.segmentText, selectedDayId === day.id && styles.segmentTextActive]}>{day.dayLabel}</Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <TextInput
+            onChangeText={setLibrarySearch}
+            placeholder={`Search ${activeCategory.toLowerCase()} exercises, aliases, or muscles`}
+            placeholderTextColor={colors.muted}
+            style={styles.fullInput}
+            value={librarySearch}
+          />
+
+          {multiSelectMode ? (
+            <View style={styles.multiSelectBar}>
+              <Text style={styles.multiSelectText}>{selectedExerciseIds.length} selected</Text>
+              <View style={styles.multiSelectActions}>
+                <Pressable
+                  onPress={() => {
+                    setMultiSelectMode(false);
+                    setSelectedExerciseIds([]);
+                  }}
+                  style={styles.cancelSelectButton}
+                >
+                  <Text style={styles.cancelSelectText}>Cancel</Text>
+                </Pressable>
+                <Pressable onPress={handleAddSelectedExercises} style={styles.addButton}>
+                  <Text style={styles.addButtonText}>Add selected to {selectedDayLabel}</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <Text style={styles.body}>Tip: tap once to add a single exercise, or press and hold to select multiple at once.</Text>
+          )}
+        </Card>
+
+        {activeExercises.map((exercise) => {
+          const selected = selectedExerciseIds.includes(exercise.id);
+          return (
+            <Card key={exercise.id}>
+              <Pressable
+                onLongPress={() => handleExerciseLongPress(exercise.id)}
+                onPress={() => handleExercisePress(exercise.id, exercise.name, exercise.category)}
+                style={[styles.libraryCard, selected && styles.libraryCardSelected]}
+              >
+                <View style={styles.exerciseHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.exerciseName}>{exercise.name}</Text>
+                    {exercise.aliases.length ? <Text style={styles.aliasText}>Also called: {exercise.aliases.join(", ")}</Text> : null}
+                    <Text style={styles.exerciseCategory}>{exercise.movementPattern}</Text>
+                  </View>
+                  {multiSelectMode ? (
+                    <View style={[styles.selectionBadge, selected && styles.selectionBadgeActive]}>
+                      <Text style={[styles.selectionBadgeText, selected && styles.selectionBadgeTextActive]}>
+                        {selected ? "Selected" : "Select"}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={styles.inlineAction}>
+                      <Text style={styles.inlineActionText}>Add</Text>
+                    </View>
+                  )}
+                </View>
+
+                <Text style={styles.body}>Primary: {exercise.primaryMuscles.join(", ")}</Text>
+                <Text style={styles.body}>Secondary: {exercise.secondaryMuscles.join(", ")}</Text>
+                <Text style={styles.impact}>{exercise.whyItWorks}</Text>
+
+                <View style={styles.targetChart}>
+                  <Text style={styles.chartTitle}>Muscle emphasis</Text>
+                  {exercise.targetChart.map((target) => (
+                    <View key={`${exercise.id}-${target.muscle}`} style={styles.chartRow}>
+                      <Text style={styles.chartLabel}>{target.muscle}</Text>
+                      <View style={styles.chartTrack}>
+                        <View style={[styles.chartFill, { width: `${target.percent}%` }]} />
+                      </View>
+                      <Text style={styles.chartPercent}>{target.percent}%</Text>
+                    </View>
+                  ))}
+                </View>
+              </Pressable>
+            </Card>
+          );
+        })}
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer>
       <SectionHeader
         eyebrow="Training"
         title="Interactive workout builder"
-        description="FitNotes should feed PulsePilot's analysis, but PulsePilot should be where you can tweak the split, add lifts, browse exercises, and understand exactly what each movement trains."
+        description="FitNotes should feed PulsePilot's analysis, but PulsePilot should be where you can tweak the split, add lifts, browse categories, and build the plan."
       />
 
       <Card>
@@ -217,57 +395,21 @@ export default function TrainingScreen() {
       </Card>
 
       <Card>
-        <Text style={styles.cardTitle}>Exercise library</Text>
+        <Text style={styles.cardTitle}>Browse exercise categories</Text>
         <Text style={styles.body}>
-          Categories are alphabetical, exercises are alphabetical inside each category, aliases are shown, and each exercise includes a muscle-emphasis chart.
+          Each main muscle group opens as its own second-level page under Training so you can browse, search, and select exercises without losing your place on the main workout screen.
         </Text>
-        <TextInput
-          onChangeText={setLibrarySearch}
-          placeholder="Search exercises, aliases, or muscles"
-          placeholderTextColor={colors.muted}
-          style={styles.fullInput}
-          value={librarySearch}
-        />
-
-        {groupedLibrary.map((group) => (
-          <View key={group.category} style={styles.categorySection}>
-            <Text style={styles.categoryHeading}>{group.category}</Text>
-            {group.exercises.map((exercise) => (
-              <View key={exercise.id} style={styles.libraryCard}>
-                <View style={styles.exerciseHeader}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.exerciseName}>{exercise.name}</Text>
-                    {exercise.aliases.length ? <Text style={styles.aliasText}>Also called: {exercise.aliases.join(", ")}</Text> : null}
-                    <Text style={styles.exerciseCategory}>{exercise.movementPattern}</Text>
-                  </View>
-                  <Pressable
-                    onPress={() => addWorkoutExercise(selectedDayId, exercise.name, exercise.category)}
-                    style={styles.inlineAction}
-                  >
-                    <Text style={styles.inlineActionText}>Add to {selectedDayLabel}</Text>
-                  </Pressable>
-                </View>
-
-                <Text style={styles.body}>Primary: {exercise.primaryMuscles.join(", ")}</Text>
-                <Text style={styles.body}>Secondary: {exercise.secondaryMuscles.join(", ")}</Text>
-                <Text style={styles.impact}>{exercise.whyItWorks}</Text>
-
-                <View style={styles.targetChart}>
-                  <Text style={styles.chartTitle}>Muscle emphasis</Text>
-                  {exercise.targetChart.map((target) => (
-                    <View key={`${exercise.id}-${target.muscle}`} style={styles.chartRow}>
-                      <Text style={styles.chartLabel}>{target.muscle}</Text>
-                      <View style={styles.chartTrack}>
-                        <View style={[styles.chartFill, { width: `${target.percent}%` }]} />
-                      </View>
-                      <Text style={styles.chartPercent}>{target.percent}%</Text>
-                    </View>
-                  ))}
-                </View>
+        <View style={styles.categoryGrid}>
+          {categoryCounts.map(({ category, count }) => (
+            <Pressable key={category} onPress={() => setActiveCategory(category)} style={styles.categoryTile}>
+              <Image source={categoryImages[category]} style={styles.categoryImage} />
+              <View style={styles.categoryOverlay}>
+                <Text style={styles.categoryTileTitle}>{category}</Text>
+                <Text style={styles.categoryTileMeta}>{count} exercises</Text>
               </View>
-            ))}
-          </View>
-        ))}
+            </Pressable>
+          ))}
+        </View>
       </Card>
     </ScreenContainer>
   );
@@ -289,6 +431,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700"
   },
+  detailHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between"
+  },
+  backButton: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 10
+  },
+  backButtonText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: "800"
+  },
   segmentRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -309,6 +467,30 @@ const styles = StyleSheet.create({
   },
   segmentTextActive: {
     color: "#FFFFFF"
+  },
+  multiSelectBar: {
+    gap: spacing.sm
+  },
+  multiSelectText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: "800"
+  },
+  multiSelectActions: {
+    flexDirection: "row",
+    gap: spacing.sm
+  },
+  cancelSelectButton: {
+    alignItems: "center",
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.pill,
+    flex: 1,
+    justifyContent: "center",
+    paddingVertical: 14
+  },
+  cancelSelectText: {
+    color: colors.text,
+    fontWeight: "800"
   },
   dayCard: {
     borderTopColor: colors.border,
@@ -393,6 +575,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.accent,
     borderRadius: radius.pill,
+    flex: 1,
     paddingVertical: 14
   },
   addButtonText: {
@@ -412,17 +595,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "800"
   },
-  categorySection: {
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-    gap: spacing.sm,
-    paddingTop: spacing.md
-  },
-  categoryHeading: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: "900"
-  },
   libraryCard: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -430,6 +602,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: spacing.sm,
     padding: spacing.md
+  },
+  libraryCardSelected: {
+    borderColor: colors.accent,
+    borderWidth: 2
   },
   aliasText: {
     color: colors.muted,
@@ -446,6 +622,23 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 12,
     fontWeight: "800"
+  },
+  selectionBadge: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 10
+  },
+  selectionBadgeActive: {
+    backgroundColor: colors.accent
+  },
+  selectionBadgeText: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: "800"
+  },
+  selectionBadgeTextActive: {
+    color: "#FFFFFF"
   },
   targetChart: {
     gap: 8
@@ -499,5 +692,38 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontSize: 13,
     fontWeight: "700"
+  },
+  categoryGrid: {
+    gap: spacing.md
+  },
+  categoryTile: {
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    overflow: "hidden",
+    position: "relative"
+  },
+  categoryImage: {
+    height: 148,
+    width: "100%"
+  },
+  categoryOverlay: {
+    backgroundColor: "rgba(10, 8, 40, 0.72)",
+    bottom: 0,
+    left: 0,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    position: "absolute",
+    right: 0
+  },
+  categoryTileTitle: {
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "900"
+  },
+  categoryTileMeta: {
+    color: "#E6ECFF",
+    fontSize: 13,
+    marginTop: 2
   }
 });

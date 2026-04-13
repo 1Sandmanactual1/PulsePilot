@@ -90,6 +90,7 @@ type AppStateContextValue = {
   markIntegrationConnected: (key: keyof AppPreferences["integrations"], detail: string) => Promise<void>;
   recordFitNotesImport: (fileName: string, text: string) => Promise<void>;
   addWorkoutExercise: (dayId: string, exerciseName: string, category?: string) => Promise<void>;
+  addWorkoutExercises: (dayId: string, exercises: Array<{ exerciseName: string; category?: string }>) => Promise<void>;
   updateWorkoutExercise: (dayId: string, exerciseId: string, next: Partial<WorkoutDay["exercises"][number]>) => Promise<void>;
   removeWorkoutExercise: (dayId: string, exerciseId: string) => Promise<void>;
   addFoodLogEntry: (entry: Omit<NutritionFoodEntry, "id">) => Promise<void>;
@@ -441,6 +442,33 @@ export function AppStateProvider({ children }: PropsWithChildren) {
     await persistWeeklyPlan(next);
   }
 
+  async function addWorkoutExercises(dayId: string, exercises: Array<{ exerciseName: string; category?: string }>) {
+    if (!exercises.length) {
+      return;
+    }
+
+    const next = weeklyPlan.map((day) =>
+      day.id === dayId
+        ? {
+            ...day,
+            exercises: [
+              ...day.exercises,
+              ...exercises.map((exercise) => ({
+                id: `${dayId}-${Date.now()}-${exercise.exerciseName.replace(/\s+/g, "-").toLowerCase()}`,
+                exerciseName: exercise.exerciseName,
+                category: exercise.category || "Custom",
+                sets: 3,
+                reps: "8-10",
+                weightLb: 0
+              }))
+            ]
+          }
+        : day
+    );
+
+    await persistWeeklyPlan(next);
+  }
+
   async function updateWorkoutExercise(dayId: string, exerciseId: string, nextUpdate: Partial<WorkoutDay["exercises"][number]>) {
     const next = weeklyPlan.map((day) =>
       day.id === dayId
@@ -694,6 +722,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
         markIntegrationConnected,
         recordFitNotesImport,
         addWorkoutExercise,
+        addWorkoutExercises,
         updateWorkoutExercise,
         removeWorkoutExercise,
         addFoodLogEntry,
