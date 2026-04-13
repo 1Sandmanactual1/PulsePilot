@@ -26,15 +26,15 @@ const providerContent = {
     status: "Waiting for Garmin developer approval and OAuth credentials."
   },
   myfitnesspal: {
-    title: "Sync MyFitnessPal account",
-    body: "PulsePilot is designed to pull nutrition, calories, food history, and weight changes from MyFitnessPal, then eventually write matching shared fields back where partner support allows it.",
+    title: "PulsePilot nutrition is built in",
+    body: "PulsePilot now owns food logging, macro targets, saved foods, saved meals, and weight tracking directly. External MyFitnessPal sync is no longer required for the core nutrition workflow.",
     nextSteps: [
-      "Apply for MyFitnessPal partner/API access.",
-      "Receive the partner credentials and callback URL requirements.",
-      "Wire the real MyFitnessPal OAuth redirect into this handoff screen.",
-      "Turn on PulsePilot-first sync for shared profile and nutrition fields."
+      "Use the Nutrition tab to log foods and edit calorie/macro targets directly.",
+      "Save favorite foods and meals for quick logging.",
+      "Track body weight inside PulsePilot instead of relying on MyFitnessPal.",
+      "Add barcode scan, meal scan, and recipe import as native PulsePilot features next."
     ],
-    status: "Waiting for MyFitnessPal partner/API credentials."
+    status: "PulsePilot nutrition is active now. No MyFitnessPal sign-in is required."
   }
 } as const;
 
@@ -101,8 +101,8 @@ export default function SettingsScreen() {
 
   async function handleMyFitnessPalConnect() {
     setStatusTone("success");
-    setStatusMessage("MyFitnessPal sync request saved. PulsePilot is ready for the MyFitnessPal sign-in redirect once partner/API credentials are approved.");
-    await markIntegrationConnected("myfitnesspal", "Connection request started. Waiting for MyFitnessPal partner/API credentials.");
+    setStatusMessage("PulsePilot nutrition is already active. Use the Nutrition tab for food logging, targets, saved foods, saved meals, and weight tracking.");
+    await markIntegrationConnected("myfitnesspal", "PulsePilot nutrition is active now. No MyFitnessPal sign-in is required.");
   }
 
   function openFitNotesPicker() {
@@ -237,7 +237,7 @@ export default function SettingsScreen() {
 
       <Card>
         <Text style={styles.cardTitle}>Connections</Text>
-        <Text style={styles.helper}>This is where PulsePilot links Garmin Connect, MyFitnessPal, and FitNotes. The goal is for PulsePilot to act as the main hub, pulling in external changes and pushing matching updates back out when each provider supports that kind of write sync. Garmin and MyFitnessPal still need approved partner/API access for full live sync. FitNotes is designed to start with export/import.</Text>
+        <Text style={styles.helper}>This is where PulsePilot links Garmin Connect and FitNotes, while owning nutrition directly inside the app. Garmin still needs approved partner/API access for full live sync. FitNotes is designed to start with export/import.</Text>
         {Object.values(preferences.integrations).map((integration) => (
           <View key={integration.key} style={styles.integrationCard}>
             <Text style={styles.integrationTitle}>{integration.label}</Text>
@@ -260,7 +260,7 @@ export default function SettingsScreen() {
             ) : null}
             {integration.key === "myfitnesspal" ? (
               <Pressable onPress={() => setProviderModal("myfitnesspal")} style={styles.integrationAction}>
-                <Text style={styles.integrationActionText}>Sync MyFitnessPal account</Text>
+                <Text style={styles.integrationActionText}>View nutrition hub plan</Text>
               </Pressable>
             ) : null}
             {integration.key === "fitnotes" ? (

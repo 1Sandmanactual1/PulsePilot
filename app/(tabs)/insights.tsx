@@ -49,7 +49,7 @@ export default function InsightsScreen() {
       <Card>
         <Text style={styles.cardTitle}>Decision model</Text>
         <Text style={styles.body}>1. Garmin recovery status once live sync is approved and connected.</Text>
-        <Text style={styles.body}>2. Food intake entered in PulsePilot or synced in from MyFitnessPal.</Text>
+        <Text style={styles.body}>2. Food intake, macro targets, saved meals, and weight logs entered directly in PulsePilot.</Text>
         <Text style={styles.body}>3. FitNotes workout history and the edits you make directly in PulsePilot.</Text>
         <Text style={styles.body}>4. Your weekly check-ins about getting stronger, staying the same, or getting weaker.</Text>
       </Card>

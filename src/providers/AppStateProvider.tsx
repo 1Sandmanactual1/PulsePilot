@@ -4,6 +4,10 @@ import {
   defaultPreferences,
   mockCheckIns,
   mockDailyMealPlan,
+  defaultNutritionTargets,
+  defaultSavedFoods,
+  defaultSavedMeals,
+  defaultWeightHistory,
   mockFoodLog,
   mockNutrition,
   mockProfile,
@@ -39,11 +43,15 @@ import {
   NutritionDayPlan,
   NutritionFoodEntry,
   NutritionSnapshot,
+  NutritionTargets,
+  SavedFood,
+  SavedMealTemplate,
   UserProfile,
   VitalHistoryPoint,
   VitalSyncStatus,
   WeeklyCheckIn,
   WeeklyStrengthFeeling,
+  WeightLogEntry,
   WorkoutDay
 } from "@/types/domain";
 
@@ -53,12 +61,16 @@ type AppStateContextValue = {
   nutrition: NutritionSnapshot;
   weeklyPlan: WorkoutDay[];
   dailyMealPlan: NutritionDayPlan[];
+  nutritionTargets: NutritionTargets;
   suggestions: CoachingSuggestion[];
   preferences: AppPreferences;
   checkIns: WeeklyCheckIn[];
   fitNotesImports: FitNotesImportRecord[];
   fitNotesSummary: FitNotesImportSummary | null;
   foodLog: NutritionFoodEntry[];
+  savedFoods: SavedFood[];
+  savedMeals: SavedMealTemplate[];
+  weightHistory: WeightLogEntry[];
   vitalHistory: VitalHistoryPoint[];
   vitalsStatus: VitalSyncStatus;
   currentFeeling?: WeeklyStrengthFeeling;
@@ -74,6 +86,12 @@ type AppStateContextValue = {
   removeWorkoutExercise: (dayId: string, exerciseId: string) => Promise<void>;
   addFoodLogEntry: (entry: Omit<NutritionFoodEntry, "id">) => Promise<void>;
   removeFoodLogEntry: (entryId: string) => Promise<void>;
+  saveCurrentFoodAsFavorite: (entryId: string) => Promise<void>;
+  quickAddSavedFood: (foodId: string) => Promise<void>;
+  quickAddSavedMeal: (mealId: string) => Promise<void>;
+  saveMealFromCurrentFoods: (name: string, meal: NutritionFoodEntry["meal"]) => Promise<void>;
+  updateNutritionTargets: (next: NutritionTargets) => Promise<void>;
+  logWeight: (weightLb: number, note?: string) => Promise<void>;
 };
 
 const AppStateContext = createContext<AppStateContextValue | undefined>(undefined);
@@ -84,6 +102,10 @@ const PROFILE_KEY = "pulsepilot.profile";
 const FITNOTES_SUMMARY_KEY = "pulsepilot.fitnotes-summary";
 const WEEKLY_PLAN_KEY = "pulsepilot.weekly-plan";
 const FOOD_LOG_KEY = "pulsepilot.food-log";
+const NUTRITION_TARGETS_KEY = "pulsepilot.nutrition-targets";
+const SAVED_FOODS_KEY = "pulsepilot.saved-foods";
+const SAVED_MEALS_KEY = "pulsepilot.saved-meals";
+const WEIGHT_HISTORY_KEY = "pulsepilot.weight-history";
 
 export function AppStateProvider({ children }: PropsWithChildren) {
   const { session } = useAuth();
@@ -93,6 +115,10 @@ export function AppStateProvider({ children }: PropsWithChildren) {
   const [foodLog, setFoodLog] = useState<NutritionFoodEntry[]>(mockFoodLog);
   const [weeklyPlan, setWeeklyPlan] = useState<WorkoutDay[]>(mockWeeklyPlan);
   const [dailyMealPlan, setDailyMealPlan] = useState<NutritionDayPlan[]>(mockDailyMealPlan);
+  const [nutritionTargets, setNutritionTargets] = useState<NutritionTargets>(defaultNutritionTargets);
+  const [savedFoods, setSavedFoods] = useState<SavedFood[]>(defaultSavedFoods);
+  const [savedMeals, setSavedMeals] = useState<SavedMealTemplate[]>(defaultSavedMeals);
+  const [weightHistory, setWeightHistory] = useState<WeightLogEntry[]>(defaultWeightHistory);
   const [vitalHistory, setVitalHistory] = useState<VitalHistoryPoint[]>(mockVitalHistory);
   const [vitalsStatus, setVitalsStatus] = useState<VitalSyncStatus>("demo");
   const [preferences, setPreferences] = useState<AppPreferences>(defaultPreferences);
@@ -110,12 +136,20 @@ export function AppStateProvider({ children }: PropsWithChildren) {
       const storedFitNotesSummary = await getJson<FitNotesImportSummary | null>(FITNOTES_SUMMARY_KEY, null);
       const storedWeeklyPlan = await getJson(WEEKLY_PLAN_KEY, mockWeeklyPlan);
       const storedFoodLog = await getJson(FOOD_LOG_KEY, mockFoodLog);
+      const storedNutritionTargets = await getJson(NUTRITION_TARGETS_KEY, defaultNutritionTargets);
+      const storedSavedFoods = await getJson(SAVED_FOODS_KEY, defaultSavedFoods);
+      const storedSavedMeals = await getJson(SAVED_MEALS_KEY, defaultSavedMeals);
+      const storedWeightHistory = await getJson(WEIGHT_HISTORY_KEY, defaultWeightHistory);
       let nextProfile = storedProfile;
       let nextVitals = mockVitals;
       let nextNutrition = mockNutrition;
       let nextFoodLog = storedFoodLog;
       let nextWeeklyPlan = storedWeeklyPlan;
       let nextDailyMealPlan = buildDailyMealPlan(storedProfile.goal);
+      let nextNutritionTargets = storedNutritionTargets;
+      let nextSavedFoods = storedSavedFoods;
+      let nextSavedMeals = storedSavedMeals;
+      let nextWeightHistory = storedWeightHistory;
       let nextVitalHistory = mockVitalHistory;
       let nextVitalsStatus: VitalSyncStatus = "demo";
       let nextPreferences = storedPrefs;
@@ -151,7 +185,13 @@ export function AppStateProvider({ children }: PropsWithChildren) {
         nextFitNotesImports = await loadFitNotesImports(session.user.id);
       }
 
-      const macroTargets = getNutritionTargetsForGoal(nextProfile.goal, nextProfile.currentWeightLb);
+      const autoTargets = getNutritionTargetsForGoal(nextProfile.goal, nextProfile.currentWeightLb);
+      const macroTargets = {
+        calories: nextNutritionTargets.calories || autoTargets.calories,
+        proteinGrams: nextNutritionTargets.proteinGrams || autoTargets.proteinGrams,
+        carbsGrams: nextNutritionTargets.carbsGrams || autoTargets.carbsGrams,
+        fatGrams: nextNutritionTargets.fatGrams || autoTargets.fatGrams
+      };
       const nutritionWithTargets = {
         ...nextNutrition,
         caloriesTarget: macroTargets.calories,
@@ -171,6 +211,10 @@ export function AppStateProvider({ children }: PropsWithChildren) {
       setFoodLog(nextFoodLog);
       setWeeklyPlan(nextWeeklyPlan);
       setDailyMealPlan(nextDailyMealPlan);
+      setNutritionTargets(macroTargets);
+      setSavedFoods(nextSavedFoods);
+      setSavedMeals(nextSavedMeals);
+      setWeightHistory(nextWeightHistory);
       setVitalHistory(nextVitalHistory);
       setVitalsStatus(nextVitalsStatus);
       setPreferences(nextPreferences);
@@ -200,7 +244,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
     const macroTargets = getNutritionTargetsForGoal(next.goal, next.currentWeightLb);
     setNutrition((current) => ({
       ...current,
-      caloriesTarget: macroTargets.calories
+      caloriesTarget: nutritionTargets.calories || macroTargets.calories
     }));
     setDailyMealPlan(buildDailyMealPlan(next.goal));
     if (session?.user) {
@@ -234,13 +278,15 @@ export function AppStateProvider({ children }: PropsWithChildren) {
   }
 
   async function markIntegrationConnected(key: keyof AppPreferences["integrations"], detail: string) {
+    const status =
+      key === "fitnotes" ? "connected" : key === "myfitnesspal" ? "connected" : ("partner-required" as const);
     const next = {
       ...preferences,
       integrations: {
         ...preferences.integrations,
         [key]: {
           ...preferences.integrations[key],
-          status: key === "fitnotes" ? ("connected" as const) : ("partner-required" as const),
+          status,
           detail
         }
       }
@@ -333,7 +379,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
     ];
     setFoodLog(next);
     await setJson(FOOD_LOG_KEY, next);
-    const macroTargets = getNutritionTargetsForGoal(profile.goal, profile.currentWeightLb);
+    const macroTargets = nutritionTargets.calories ? nutritionTargets : getNutritionTargetsForGoal(profile.goal, profile.currentWeightLb);
     setNutrition(
       buildNutritionFromFoodLog(next, {
         ...nutrition,
@@ -346,13 +392,113 @@ export function AppStateProvider({ children }: PropsWithChildren) {
     const next = foodLog.filter((entry) => entry.id !== entryId);
     setFoodLog(next);
     await setJson(FOOD_LOG_KEY, next);
-    const macroTargets = getNutritionTargetsForGoal(profile.goal, profile.currentWeightLb);
+    const macroTargets = nutritionTargets.calories ? nutritionTargets : getNutritionTargetsForGoal(profile.goal, profile.currentWeightLb);
     setNutrition(
       buildNutritionFromFoodLog(next, {
         ...nutrition,
         caloriesTarget: macroTargets.calories
       })
     );
+  }
+
+  async function saveCurrentFoodAsFavorite(entryId: string) {
+    const entry = foodLog.find((item) => item.id === entryId);
+    if (!entry) {
+      return;
+    }
+
+    const next = [
+      {
+        id: `saved-food-${Date.now()}`,
+        name: entry.name,
+        defaultMeal: entry.meal,
+        calories: entry.calories,
+        proteinGrams: entry.proteinGrams,
+        carbsGrams: entry.carbsGrams,
+        fatGrams: entry.fatGrams
+      },
+      ...savedFoods
+    ];
+    setSavedFoods(next);
+    await setJson(SAVED_FOODS_KEY, next);
+  }
+
+  async function quickAddSavedFood(foodId: string) {
+    const food = savedFoods.find((item) => item.id === foodId);
+    if (!food) {
+      return;
+    }
+
+    await addFoodLogEntry({
+      name: food.name,
+      meal: food.defaultMeal,
+      calories: food.calories,
+      proteinGrams: food.proteinGrams,
+      carbsGrams: food.carbsGrams,
+      fatGrams: food.fatGrams
+    });
+  }
+
+  async function quickAddSavedMeal(mealId: string) {
+    const meal = savedMeals.find((item) => item.id === mealId);
+    if (!meal) {
+      return;
+    }
+
+    for (const item of meal.items) {
+      await addFoodLogEntry({
+        name: item.name,
+        meal: meal.meal,
+        calories: item.calories,
+        proteinGrams: item.proteinGrams,
+        carbsGrams: item.carbsGrams,
+        fatGrams: item.fatGrams
+      });
+    }
+  }
+
+  async function saveMealFromCurrentFoods(name: string, meal: NutritionFoodEntry["meal"]) {
+    const items = foodLog.filter((entry) => entry.meal === meal);
+    if (!items.length || !name.trim()) {
+      return;
+    }
+
+    const next = [
+      {
+        id: `saved-meal-${Date.now()}`,
+        name: name.trim(),
+        meal,
+        items: items.map((item) => ({ ...item, id: `${item.id}-template` }))
+      },
+      ...savedMeals
+    ];
+    setSavedMeals(next);
+    await setJson(SAVED_MEALS_KEY, next);
+  }
+
+  async function updateNutritionTargets(next: NutritionTargets) {
+    setNutritionTargets(next);
+    await setJson(NUTRITION_TARGETS_KEY, next);
+    setNutrition((current) => ({
+      ...current,
+      caloriesTarget: next.calories
+    }));
+  }
+
+  async function logWeight(weightLb: number, note?: string) {
+    const entry: WeightLogEntry = {
+      id: `weight-${Date.now()}`,
+      loggedAt: new Date().toISOString(),
+      weightLb,
+      note
+    };
+    const next = [entry, ...weightHistory];
+    setWeightHistory(next);
+    await setJson(WEIGHT_HISTORY_KEY, next);
+    await updateProfile({
+      ...profile,
+      currentWeightLb: weightLb
+    });
   }
 
   return (
@@ -363,12 +509,16 @@ export function AppStateProvider({ children }: PropsWithChildren) {
         nutrition,
         weeklyPlan,
         dailyMealPlan,
+        nutritionTargets,
         suggestions: blendSuggestions(mockSuggestions, currentFeeling),
         preferences,
         checkIns,
         fitNotesImports,
         fitNotesSummary,
         foodLog,
+        savedFoods,
+        savedMeals,
+        weightHistory,
         vitalHistory,
         vitalsStatus,
         currentFeeling,
@@ -383,7 +533,13 @@ export function AppStateProvider({ children }: PropsWithChildren) {
         updateWorkoutExercise,
         removeWorkoutExercise,
         addFoodLogEntry,
-        removeFoodLogEntry
+        removeFoodLogEntry,
+        saveCurrentFoodAsFavorite,
+        quickAddSavedFood,
+        quickAddSavedMeal,
+        saveMealFromCurrentFoods,
+        updateNutritionTargets,
+        logWeight
       }}
     >
       {children}

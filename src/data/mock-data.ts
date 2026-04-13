@@ -6,10 +6,14 @@ import {
   NutritionDayPlan,
   NutritionFoodEntry,
   NutritionSnapshot,
+  NutritionTargets,
+  SavedFood,
+  SavedMealTemplate,
   SyncRule,
   UserProfile,
   VitalHistoryPoint,
   WeeklyCheckIn,
+  WeightLogEntry,
   WorkoutDay
 } from "@/types/domain";
 
@@ -86,6 +90,81 @@ export const mockFoodLog: NutritionFoodEntry[] = [
     proteinGrams: 48,
     carbsGrams: 46,
     fatGrams: 20
+  }
+];
+
+export const defaultNutritionTargets: NutritionTargets = {
+  calories: 2450,
+  proteinGrams: 190,
+  carbsGrams: 250,
+  fatGrams: 70
+};
+
+export const defaultSavedFoods: SavedFood[] = [
+  {
+    id: "saved-food-eggs",
+    name: "Eggs and oats",
+    defaultMeal: "breakfast",
+    calories: 520,
+    proteinGrams: 28,
+    carbsGrams: 42,
+    fatGrams: 24
+  },
+  {
+    id: "saved-food-bowl",
+    name: "Chicken rice bowl",
+    defaultMeal: "lunch",
+    calories: 690,
+    proteinGrams: 54,
+    carbsGrams: 62,
+    fatGrams: 18
+  }
+];
+
+export const defaultSavedMeals: SavedMealTemplate[] = [
+  {
+    id: "saved-meal-breakfast",
+    name: "Strength breakfast",
+    meal: "breakfast",
+    items: [
+      {
+        id: "meal-item-1",
+        name: "Eggs and oats",
+        meal: "breakfast",
+        calories: 520,
+        proteinGrams: 28,
+        carbsGrams: 42,
+        fatGrams: 24
+      },
+      {
+        id: "meal-item-2",
+        name: "Greek yogurt",
+        meal: "breakfast",
+        calories: 150,
+        proteinGrams: 15,
+        carbsGrams: 12,
+        fatGrams: 2
+      }
+    ]
+  }
+];
+
+export const defaultWeightHistory: WeightLogEntry[] = [
+  {
+    id: "weight-1",
+    loggedAt: "2026-04-13T08:00:00.000Z",
+    weightLb: 207.6,
+    note: "Morning weigh-in"
+  },
+  {
+    id: "weight-2",
+    loggedAt: "2026-04-06T08:00:00.000Z",
+    weightLb: 208.8
+  },
+  {
+    id: "weight-3",
+    loggedAt: "2026-03-30T08:00:00.000Z",
+    weightLb: 209.4
   }
 ];
 
@@ -202,20 +281,20 @@ export const defaultSyncRules: SyncRule[] = [
   {
     id: "body-weight",
     fieldLabel: "Body weight",
-    provider: "myfitnesspal",
+    provider: "pulsepilot",
     authority: "pulsepilot",
-    writeback: "planned",
-    pulsePilotBehavior: "PulsePilot should be the preferred place to edit current body weight and then sync that value outward where supported.",
-    providerBehavior: "If MyFitnessPal weight changes outside PulsePilot, PulsePilot should pull the new value back in and show it as an external update."
+    writeback: "supported",
+    pulsePilotBehavior: "PulsePilot owns body weight logging and trend analysis directly.",
+    providerBehavior: "External write-back is optional later, but PulsePilot no longer depends on MyFitnessPal for this data."
   },
   {
     id: "age-profile",
     fieldLabel: "Age",
-    provider: "myfitnesspal",
+    provider: "pulsepilot",
     authority: "pulsepilot",
-    writeback: "planned",
+    writeback: "supported",
     pulsePilotBehavior: "PulsePilot owns the editable age field and should keep the profile current for coaching logic.",
-    providerBehavior: "Provider profile values may be read when available, but PulsePilot remains the main editing surface."
+    providerBehavior: "PulsePilot is now the nutrition and profile hub, so no MyFitnessPal account is required."
   },
   {
     id: "garmin-vitals",
@@ -229,11 +308,11 @@ export const defaultSyncRules: SyncRule[] = [
   {
     id: "nutrition-diary",
     fieldLabel: "Nutrition diary and calories",
-    provider: "myfitnesspal",
-    authority: "two-way",
-    writeback: "planned",
-    pulsePilotBehavior: "PulsePilot should eventually let the user log and plan food directly, then sync matching diary updates where provider access allows it.",
-    providerBehavior: "MyFitnessPal updates should flow back into PulsePilot so food history stays current."
+    provider: "pulsepilot",
+    authority: "pulsepilot",
+    writeback: "supported",
+    pulsePilotBehavior: "PulsePilot owns food logging, macro targets, saved meals, and calorie tracking directly.",
+    providerBehavior: "External sync is optional later, but PulsePilot should stand alone as the nutrition system."
   },
   {
     id: "workout-history",
@@ -271,10 +350,10 @@ export const defaultPreferences: AppPreferences = {
     },
     myfitnesspal: {
       key: "myfitnesspal",
-      label: "MyFitnessPal",
-      description: "Pull weight history, calories, macros, foods, and meal tracking into PulsePilot.",
-      status: "partner-required",
-      detail: "Connection UI is ready. Final live sync needs MyFitnessPal partner/API access."
+      label: "PulsePilot Nutrition",
+      description: "Built-in food logging, macro targets, saved foods, saved meals, weight tracking, and meal planning live directly inside PulsePilot.",
+      status: "connected",
+      detail: "PulsePilot now owns the nutrition workflow directly instead of waiting on MyFitnessPal."
     },
     fitnotes: {
       key: "fitnotes",

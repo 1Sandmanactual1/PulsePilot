@@ -106,6 +106,37 @@ export type NutritionDayPlan = {
   meals: string[];
 };
 
+export type NutritionTargets = {
+  calories: number;
+  proteinGrams: number;
+  carbsGrams: number;
+  fatGrams: number;
+};
+
+export type SavedFood = {
+  id: string;
+  name: string;
+  defaultMeal: NutritionFoodEntry["meal"];
+  calories: number;
+  proteinGrams: number;
+  carbsGrams: number;
+  fatGrams: number;
+};
+
+export type SavedMealTemplate = {
+  id: string;
+  name: string;
+  meal: NutritionFoodEntry["meal"];
+  items: NutritionFoodEntry[];
+};
+
+export type WeightLogEntry = {
+  id: string;
+  loggedAt: string;
+  weightLb: number;
+  note?: string;
+};
+
 export type ExerciseDefinition = {
   id: string;
   name: string;

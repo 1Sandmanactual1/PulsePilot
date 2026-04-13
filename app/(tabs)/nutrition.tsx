@@ -37,22 +37,36 @@ const emptyForm: FoodForm = {
 };
 
 export default function NutritionScreen() {
-  const { nutrition, profile, foodLog, dailyMealPlan, setGoal, addFoodLogEntry, removeFoodLogEntry } = useAppState();
+  const {
+    nutrition,
+    profile,
+    foodLog,
+    dailyMealPlan,
+    nutritionTargets,
+    savedFoods,
+    savedMeals,
+    weightHistory,
+    setGoal,
+    addFoodLogEntry,
+    removeFoodLogEntry,
+    saveCurrentFoodAsFavorite,
+    quickAddSavedFood,
+    quickAddSavedMeal,
+    saveMealFromCurrentFoods,
+    updateNutritionTargets,
+    logWeight
+  } = useAppState();
   const [form, setForm] = useState<FoodForm>(emptyForm);
-  const targets = useMemo(() => getNutritionTargetsForGoal(profile.goal, profile.currentWeightLb), [profile.goal, profile.currentWeightLb]);
-  const prepPlan = useMemo(() => {
-    const proteinItems = ["Chicken breast", "Greek yogurt", "Eggs"];
-    const carbItems = ["Cooked rice", "Oats", "Blueberries"];
-    return [
-      ["Chicken breast", profile.goal === "fatloss" ? "42 oz for week" : "56 oz for week"],
-      ["Cooked rice", profile.goal === "endurance" ? "16 cups for week" : "12 cups for week"],
-      ["Greek yogurt", "7 servings"],
-      ["Eggs", "18 count"],
-      ["Oats", profile.goal === "hypertrophy" ? "9 cups dry" : "7 cups dry"],
-      ["Blueberries", "4 pints"],
-      ["Focus", `${proteinItems.join(", ")} + ${carbItems.join(", ")}`]
-    ];
-  }, [profile.goal]);
+  const [mealName, setMealName] = useState("");
+  const [targetDraft, setTargetDraft] = useState({
+    calories: String(nutritionTargets.calories),
+    proteinGrams: String(nutritionTargets.proteinGrams),
+    carbsGrams: String(nutritionTargets.carbsGrams),
+    fatGrams: String(nutritionTargets.fatGrams)
+  });
+  const [weightDraft, setWeightDraft] = useState(String(profile.currentWeightLb));
+
+  const autoTargets = useMemo(() => getNutritionTargetsForGoal(profile.goal, profile.currentWeightLb), [profile.goal, profile.currentWeightLb]);
 
   async function handleAddFood() {
     if (!form.name.trim()) {
@@ -70,17 +84,35 @@ export default function NutritionScreen() {
     setForm(emptyForm);
   }
 
+  async function handleSaveTargets() {
+    await updateNutritionTargets({
+      calories: Number(targetDraft.calories) || autoTargets.calories,
+      proteinGrams: Number(targetDraft.proteinGrams) || autoTargets.proteinGrams,
+      carbsGrams: Number(targetDraft.carbsGrams) || autoTargets.carbsGrams,
+      fatGrams: Number(targetDraft.fatGrams) || autoTargets.fatGrams
+    });
+  }
+
+  async function handleLogWeight() {
+    const nextWeight = Number(weightDraft);
+    if (!Number.isFinite(nextWeight)) {
+      return;
+    }
+
+    await logWeight(nextWeight, "Logged from nutrition tab");
+  }
+
   return (
     <ScreenContainer>
       <SectionHeader
         eyebrow="Nutrition"
-        title="Goal-driven food tracking and planning"
-        description="This should react to the goal you choose and to the foods you log in PulsePilot or eventually sync in from MyFitnessPal."
+        title="PulsePilot nutrition engine"
+        description="PulsePilot now owns the MyFitnessPal-style workflow directly: goals, targets, food logging, saved foods, saved meals, and weight tracking."
       />
 
       <Card>
         <Text style={styles.cardTitle}>Goal selection</Text>
-        <Text style={styles.body}>Pick the main goal that should drive both eating recommendations and workout suggestions.</Text>
+        <Text style={styles.body}>This goal now drives both nutrition suggestions and training recommendations inside PulsePilot.</Text>
         <View style={styles.goalRow}>
           {goalOptions.map((goal) => (
             <Pressable
@@ -97,17 +129,75 @@ export default function NutritionScreen() {
       </Card>
 
       <Card>
+        <Text style={styles.cardTitle}>Custom targets</Text>
+        <Text style={styles.body}>MyFitnessPal-style calorie and macro goal editing now lives directly in PulsePilot.</Text>
+        <Text style={styles.helper}>
+          Auto target suggestion for {getGoalLabel(profile.goal)} at {profile.currentWeightLb} lb: {autoTargets.calories} cal / P {autoTargets.proteinGrams} / C {autoTargets.carbsGrams} / F {autoTargets.fatGrams}
+        </Text>
+        <View style={styles.inputRow}>
+          <TextInput
+            keyboardType="numeric"
+            onChangeText={(value) => setTargetDraft((current) => ({ ...current, calories: value }))}
+            placeholder="Calories"
+            placeholderTextColor={colors.muted}
+            style={styles.miniInput}
+            value={targetDraft.calories}
+          />
+          <TextInput
+            keyboardType="numeric"
+            onChangeText={(value) => setTargetDraft((current) => ({ ...current, proteinGrams: value }))}
+            placeholder="Protein"
+            placeholderTextColor={colors.muted}
+            style={styles.miniInput}
+            value={targetDraft.proteinGrams}
+          />
+        </View>
+        <View style={styles.inputRow}>
+          <TextInput
+            keyboardType="numeric"
+            onChangeText={(value) => setTargetDraft((current) => ({ ...current, carbsGrams: value }))}
+            placeholder="Carbs"
+            placeholderTextColor={colors.muted}
+            style={styles.miniInput}
+            value={targetDraft.carbsGrams}
+          />
+          <TextInput
+            keyboardType="numeric"
+            onChangeText={(value) => setTargetDraft((current) => ({ ...current, fatGrams: value }))}
+            placeholder="Fat"
+            placeholderTextColor={colors.muted}
+            style={styles.miniInput}
+            value={targetDraft.fatGrams}
+          />
+        </View>
+        <Pressable onPress={handleSaveTargets} style={styles.addButton}>
+          <Text style={styles.addButtonText}>Save nutrition targets</Text>
+        </Pressable>
+      </Card>
+
+      <Card>
         <Text style={styles.cardTitle}>Actual intake vs target</Text>
-        <Text style={styles.body}>This chart should represent what you actually ate, not just what PulsePilot wants you to eat.</Text>
-        <MacroBar label="Calories" current={nutrition.caloriesConsumed} target={targets.calories} suffix="" />
-        <MacroBar label="Protein" current={nutrition.proteinGrams} target={targets.proteinGrams} suffix=" g" />
-        <MacroBar label="Carbs" current={nutrition.carbsGrams} target={targets.carbsGrams} suffix=" g" />
-        <MacroBar label="Fat" current={nutrition.fatGrams} target={targets.fatGrams} suffix=" g" />
+        <MacroBar label="Calories" current={nutrition.caloriesConsumed} target={nutritionTargets.calories} suffix="" />
+        <MacroBar label="Protein" current={nutrition.proteinGrams} target={nutritionTargets.proteinGrams} suffix=" g" />
+        <MacroBar label="Carbs" current={nutrition.carbsGrams} target={nutritionTargets.carbsGrams} suffix=" g" />
+        <MacroBar label="Fat" current={nutrition.fatGrams} target={nutritionTargets.fatGrams} suffix=" g" />
+      </Card>
+
+      <Card>
+        <Text style={styles.cardTitle}>Quick log methods</Text>
+        <Text style={styles.helper}>PulsePilot now owns the diary. Barcode scan, meal scan, and recipe import are the next built-in logging helpers to add.</Text>
+        <View style={styles.quickLogGrid}>
+          <View style={styles.quickLogTile}><Text style={styles.quickLogTitle}>Food diary</Text><Text style={styles.body}>Active now</Text></View>
+          <View style={styles.quickLogTile}><Text style={styles.quickLogTitle}>Saved foods</Text><Text style={styles.body}>Active now</Text></View>
+          <View style={styles.quickLogTile}><Text style={styles.quickLogTitle}>Saved meals</Text><Text style={styles.body}>Active now</Text></View>
+          <View style={styles.quickLogTile}><Text style={styles.quickLogTitle}>Barcode scan</Text><Text style={styles.body}>Next</Text></View>
+          <View style={styles.quickLogTile}><Text style={styles.quickLogTitle}>Meal scan</Text><Text style={styles.body}>Next</Text></View>
+          <View style={styles.quickLogTile}><Text style={styles.quickLogTitle}>Recipe importer</Text><Text style={styles.body}>Next</Text></View>
+        </View>
       </Card>
 
       <Card>
         <Text style={styles.cardTitle}>Log food in PulsePilot</Text>
-        <Text style={styles.helper}>Until live MyFitnessPal sync is approved, logging here is how PulsePilot can behave like the main hub.</Text>
         <TextInput
           onChangeText={(value) => setForm((current) => ({ ...current, name: value }))}
           placeholder="Food name"
@@ -168,6 +258,50 @@ export default function NutritionScreen() {
       </Card>
 
       <Card>
+        <Text style={styles.cardTitle}>Saved foods</Text>
+        {savedFoods.map((food) => (
+          <View key={food.id} style={styles.foodRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.foodName}>{food.name}</Text>
+              <Text style={styles.foodMeta}>
+                {food.defaultMeal} · {food.calories} cal · P {food.proteinGrams} / C {food.carbsGrams} / F {food.fatGrams}
+              </Text>
+            </View>
+            <Pressable onPress={() => quickAddSavedFood(food.id)} style={styles.smallAction}>
+              <Text style={styles.smallActionText}>Quick add</Text>
+            </Pressable>
+          </View>
+        ))}
+      </Card>
+
+      <Card>
+        <Text style={styles.cardTitle}>Saved meals</Text>
+        <TextInput
+          onChangeText={setMealName}
+          placeholder="Name the current meal to save it"
+          placeholderTextColor={colors.muted}
+          style={styles.fullInput}
+          value={mealName}
+        />
+        <Pressable onPress={() => saveMealFromCurrentFoods(mealName, "lunch")} style={styles.smallAction}>
+          <Text style={styles.smallActionText}>Save current lunch as meal</Text>
+        </Pressable>
+        {savedMeals.map((meal) => (
+          <View key={meal.id} style={styles.foodRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.foodName}>{meal.name}</Text>
+              <Text style={styles.foodMeta}>
+                {meal.meal} · {meal.items.length} items
+              </Text>
+            </View>
+            <Pressable onPress={() => quickAddSavedMeal(meal.id)} style={styles.smallAction}>
+              <Text style={styles.smallActionText}>Quick add</Text>
+            </Pressable>
+          </View>
+        ))}
+      </Card>
+
+      <Card>
         <Text style={styles.cardTitle}>Today's logged foods</Text>
         {foodLog.map((entry) => (
           <View key={entry.id} style={styles.foodRow}>
@@ -177,9 +311,36 @@ export default function NutritionScreen() {
                 {entry.meal} · {entry.calories} cal · P {entry.proteinGrams} / C {entry.carbsGrams} / F {entry.fatGrams}
               </Text>
             </View>
-            <Pressable onPress={() => removeFoodLogEntry(entry.id)} style={styles.removeButton}>
-              <Text style={styles.removeButtonText}>Remove</Text>
-            </Pressable>
+            <View style={styles.actionGroup}>
+              <Pressable onPress={() => saveCurrentFoodAsFavorite(entry.id)} style={styles.smallAction}>
+                <Text style={styles.smallActionText}>Save food</Text>
+              </Pressable>
+              <Pressable onPress={() => removeFoodLogEntry(entry.id)} style={styles.removeButton}>
+                <Text style={styles.removeButtonText}>Remove</Text>
+              </Pressable>
+            </View>
+          </View>
+        ))}
+      </Card>
+
+      <Card>
+        <Text style={styles.cardTitle}>Weight logging</Text>
+        <Text style={styles.body}>Weight trend is now part of PulsePilot directly instead of depending on MyFitnessPal.</Text>
+        <TextInput
+          keyboardType="numeric"
+          onChangeText={setWeightDraft}
+          placeholder="Current weight"
+          placeholderTextColor={colors.muted}
+          style={styles.fullInput}
+          value={weightDraft}
+        />
+        <Pressable onPress={handleLogWeight} style={styles.addButton}>
+          <Text style={styles.addButtonText}>Log weight</Text>
+        </Pressable>
+        {weightHistory.slice(0, 5).map((entry) => (
+          <View key={entry.id} style={styles.row}>
+            <Text style={styles.label}>{new Date(entry.loggedAt).toLocaleDateString()}</Text>
+            <Text style={styles.value}>{entry.weightLb.toFixed(1)} lb</Text>
           </View>
         ))}
       </Card>
@@ -196,16 +357,6 @@ export default function NutritionScreen() {
                 {meal}
               </Text>
             ))}
-          </View>
-        ))}
-      </Card>
-
-      <Card>
-        <Text style={styles.cardTitle}>Weekly prep plan</Text>
-        {prepPlan.map(([label, value]) => (
-          <View key={label} style={styles.row}>
-            <Text style={styles.label}>{label}</Text>
-            <Text style={styles.value}>{value}</Text>
           </View>
         ))}
       </Card>
@@ -298,6 +449,24 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     height: "100%"
   },
+  quickLogGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm
+  },
+  quickLogTile: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    minWidth: 150,
+    padding: spacing.md
+  },
+  quickLogTitle: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: "800"
+  },
   segmentRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -368,6 +537,22 @@ const styles = StyleSheet.create({
   foodMeta: {
     color: colors.muted,
     fontSize: 13
+  },
+  actionGroup: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
+    justifyContent: "flex-end"
+  },
+  smallAction: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 8
+  },
+  smallActionText: {
+    color: colors.text,
+    fontWeight: "800"
   },
   removeButton: {
     backgroundColor: colors.accentSoft,
