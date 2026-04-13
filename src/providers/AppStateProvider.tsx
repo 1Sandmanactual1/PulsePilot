@@ -122,6 +122,29 @@ const SAVED_MEALS_KEY = "pulsepilot.saved-meals";
 const RECIPES_KEY = "pulsepilot.recipes";
 const WEIGHT_HISTORY_KEY = "pulsepilot.weight-history";
 
+function isLegacyDemoFoodLog(entries: NutritionFoodEntry[]) {
+  const demoIds = ["food-1", "food-2", "food-3", "food-4"];
+  return entries.length === demoIds.length && entries.every((entry, index) => entry.id === demoIds[index]);
+}
+
+function isLegacyDemoSavedFoods(entries: SavedFood[]) {
+  const demoIds = ["saved-food-eggs", "saved-food-bowl"];
+  return entries.length === demoIds.length && entries.every((entry, index) => entry.id === demoIds[index]);
+}
+
+function isLegacyDemoSavedMeals(entries: SavedMealTemplate[]) {
+  return entries.length === 1 && entries[0]?.id === "saved-meal-breakfast";
+}
+
+function isLegacyDemoRecipes(entries: SavedRecipe[]) {
+  return entries.length === 1 && entries[0]?.id === "recipe-1";
+}
+
+function isLegacyDemoWeightHistory(entries: WeightLogEntry[]) {
+  const demoIds = ["weight-1", "weight-2", "weight-3"];
+  return entries.length === demoIds.length && entries.every((entry, index) => entry.id === demoIds[index]);
+}
+
 export function AppStateProvider({ children }: PropsWithChildren) {
   const { session } = useAuth();
   const [profile, setProfile] = useState<UserProfile>(mockProfile);
@@ -177,6 +200,31 @@ export function AppStateProvider({ children }: PropsWithChildren) {
       let nextCheckIns = storedCheckIns;
       let nextFitNotesImports: FitNotesImportRecord[] = [];
       let nextFitNotesSummary = storedFitNotesSummary;
+
+      if (isLegacyDemoFoodLog(storedFoodLog)) {
+        nextFoodLog = [];
+        await setJson(FOOD_LOG_KEY, []);
+      }
+
+      if (isLegacyDemoSavedFoods(storedSavedFoods)) {
+        nextSavedFoods = [];
+        await setJson(SAVED_FOODS_KEY, []);
+      }
+
+      if (isLegacyDemoSavedMeals(storedSavedMeals)) {
+        nextSavedMeals = [];
+        await setJson(SAVED_MEALS_KEY, []);
+      }
+
+      if (isLegacyDemoRecipes(storedRecipes)) {
+        nextRecipes = [];
+        await setJson(RECIPES_KEY, []);
+      }
+
+      if (isLegacyDemoWeightHistory(storedWeightHistory)) {
+        nextWeightHistory = [];
+        await setJson(WEIGHT_HISTORY_KEY, []);
+      }
 
       if (session?.user) {
         nextProfile = await ensureUserProfile({

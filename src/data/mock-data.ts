@@ -65,51 +65,14 @@ export const mockVitalHistory: VitalHistoryPoint[] = [
 
 export const mockNutrition: NutritionSnapshot = {
   caloriesTarget: 2450,
-  caloriesConsumed: 2180,
-  proteinGrams: 154,
-  carbsGrams: 232,
-  fatGrams: 68,
-  waterOz: 56
+  caloriesConsumed: 0,
+  proteinGrams: 0,
+  carbsGrams: 0,
+  fatGrams: 0,
+  waterOz: 0
 };
 
-export const mockFoodLog: NutritionFoodEntry[] = [
-  {
-    id: "food-1",
-    name: "Eggs and oats",
-    meal: "breakfast",
-    calories: 520,
-    proteinGrams: 28,
-    carbsGrams: 42,
-    fatGrams: 24
-  },
-  {
-    id: "food-2",
-    name: "Chicken rice bowl",
-    meal: "lunch",
-    calories: 690,
-    proteinGrams: 54,
-    carbsGrams: 62,
-    fatGrams: 18
-  },
-  {
-    id: "food-3",
-    name: "Greek yogurt and berries",
-    meal: "snack",
-    calories: 310,
-    proteinGrams: 24,
-    carbsGrams: 34,
-    fatGrams: 6
-  },
-  {
-    id: "food-4",
-    name: "Steak and potatoes",
-    meal: "dinner",
-    calories: 660,
-    proteinGrams: 48,
-    carbsGrams: 46,
-    fatGrams: 20
-  }
-];
+export const mockFoodLog: NutritionFoodEntry[] = [];
 
 export const defaultNutritionTargets: NutritionTargets = {
   calories: 2450,
@@ -118,91 +81,11 @@ export const defaultNutritionTargets: NutritionTargets = {
   fatGrams: 70
 };
 
-export const defaultSavedFoods: SavedFood[] = [
-  {
-    id: "saved-food-eggs",
-    name: "Eggs and oats",
-    defaultMeal: "breakfast",
-    calories: 520,
-    proteinGrams: 28,
-    carbsGrams: 42,
-    fatGrams: 24
-  },
-  {
-    id: "saved-food-bowl",
-    name: "Chicken rice bowl",
-    defaultMeal: "lunch",
-    calories: 690,
-    proteinGrams: 54,
-    carbsGrams: 62,
-    fatGrams: 18
-  }
-];
+export const defaultSavedFoods: SavedFood[] = [];
 
-export const defaultSavedMeals: SavedMealTemplate[] = [
-  {
-    id: "saved-meal-breakfast",
-    name: "Strength breakfast",
-    meal: "breakfast",
-    items: [
-      {
-        id: "meal-item-1",
-        name: "Eggs and oats",
-        meal: "breakfast",
-        calories: 520,
-        proteinGrams: 28,
-        carbsGrams: 42,
-        fatGrams: 24
-      },
-      {
-        id: "meal-item-2",
-        name: "Greek yogurt",
-        meal: "breakfast",
-        calories: 150,
-        proteinGrams: 15,
-        carbsGrams: 12,
-        fatGrams: 2
-      }
-    ]
-  }
-];
+export const defaultSavedMeals: SavedMealTemplate[] = [];
 
-export const defaultRecipes: SavedRecipe[] = [
-  {
-    id: "recipe-1",
-    name: "Chicken prep bowl",
-    servings: 4,
-    items: [
-      {
-        id: "recipe-item-1",
-        name: "Chicken breast",
-        meal: "lunch",
-        calories: 220,
-        proteinGrams: 42,
-        carbsGrams: 0,
-        fatGrams: 5
-      },
-      {
-        id: "recipe-item-2",
-        name: "Cooked rice",
-        meal: "lunch",
-        calories: 210,
-        proteinGrams: 4,
-        carbsGrams: 46,
-        fatGrams: 0
-      },
-      {
-        id: "recipe-item-3",
-        name: "Mixed vegetables",
-        meal: "lunch",
-        calories: 60,
-        proteinGrams: 3,
-        carbsGrams: 11,
-        fatGrams: 1
-      }
-    ]
-  }
-];
+export const defaultRecipes: SavedRecipe[] = [];
 
 export const barcodeLibrary: BarcodeFoodEntry[] = [
   {
@@ -240,24 +123,7 @@ export const barcodeLibrary: BarcodeFoodEntry[] = [
   }
 ];
 
-export const defaultWeightHistory: WeightLogEntry[] = [
-  {
-    id: "weight-1",
-    loggedAt: "2026-04-13T08:00:00.000Z",
-    weightLb: 207.6,
-    note: "Morning weigh-in"
-  },
-  {
-    id: "weight-2",
-    loggedAt: "2026-04-06T08:00:00.000Z",
-    weightLb: 208.8
-  },
-  {
-    id: "weight-3",
-    loggedAt: "2026-03-30T08:00:00.000Z",
-    weightLb: 209.4
-  }
-];
+export const defaultWeightHistory: WeightLogEntry[] = [];
 
 export const exerciseLibrary: ExerciseDefinition[] = [
   {
