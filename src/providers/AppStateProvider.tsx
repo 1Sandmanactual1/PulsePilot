@@ -95,6 +95,7 @@ type AppStateContextValue = {
   addWorkoutExercises: (dayId: string, exercises: Array<{ exerciseName: string; category?: string }>) => Promise<void>;
   updateWorkoutExercise: (dayId: string, exerciseId: string, next: Partial<WorkoutDay["exercises"][number]>) => Promise<void>;
   removeWorkoutExercise: (dayId: string, exerciseId: string) => Promise<void>;
+  reorderWorkoutExercise: (dayId: string, exerciseId: string, direction: "up" | "down") => Promise<void>;
   addFoodLogEntry: (entry: Omit<NutritionFoodEntry, "id">) => Promise<void>;
   removeFoodLogEntry: (entryId: string) => Promise<void>;
   saveCurrentFoodAsFavorite: (entryId: string) => Promise<void>;
@@ -130,6 +131,16 @@ const WEIGHT_HISTORY_KEY = "pulsepilot.weight-history";
 const DAILY_MEAL_PLAN_KEY = "pulsepilot.daily-meal-plan";
 const COACH_MEMORY_KEY = "pulsepilot.coach-memory";
 
+const workoutDayLookup = [
+  { id: "sun", dayLabel: "Sunday" },
+  { id: "mon", dayLabel: "Monday" },
+  { id: "tue", dayLabel: "Tuesday" },
+  { id: "wed", dayLabel: "Wednesday" },
+  { id: "thu", dayLabel: "Thursday" },
+  { id: "fri", dayLabel: "Friday" },
+  { id: "sat", dayLabel: "Saturday" }
+] as const;
+
 function isLegacyDemoFoodLog(entries: NutritionFoodEntry[]) {
   const demoIds = ["food-1", "food-2", "food-3", "food-4"];
   return entries.length === demoIds.length && entries.every((entry, index) => entry.id === demoIds[index]);
@@ -151,6 +162,27 @@ function isLegacyDemoRecipes(entries: SavedRecipe[]) {
 function isLegacyDemoWeightHistory(entries: WeightLogEntry[]) {
   const demoIds = ["weight-1", "weight-2", "weight-3"];
   return entries.length === demoIds.length && entries.every((entry, index) => entry.id === demoIds[index]);
+}
+
+function ensureWorkoutDay(plan: WorkoutDay[], dayId: string) {
+  if (plan.some((day) => day.id === dayId)) {
+    return plan;
+  }
+
+  const template = workoutDayLookup.find((day) => day.id === dayId);
+  if (!template) {
+    return plan;
+  }
+
+  return [
+    ...plan,
+    {
+      id: template.id,
+      dayLabel: template.dayLabel,
+      focus: "Workout Log",
+      exercises: []
+    }
+  ].sort((left, right) => workoutDayLookup.findIndex((day) => day.id === left.id) - workoutDayLookup.findIndex((day) => day.id === right.id));
 }
 
 export function AppStateProvider({ children }: PropsWithChildren) {
@@ -465,7 +497,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
   }
 
   async function addWorkoutExercise(dayId: string, exerciseName: string, category = "Custom") {
-    const next = weeklyPlan.map((day) =>
+    const next = ensureWorkoutDay(weeklyPlan, dayId).map((day) =>
       day.id === dayId
         ? {
             ...day,
@@ -491,7 +523,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    const next = weeklyPlan.map((day) =>
+    const next = ensureWorkoutDay(weeklyPlan, dayId).map((day) =>
       day.id === dayId
         ? {
             ...day,
@@ -536,6 +568,35 @@ export function AppStateProvider({ children }: PropsWithChildren) {
           }
         : day
     );
+    await persistWeeklyPlan(next);
+  }
+
+  async function reorderWorkoutExercise(dayId: string, exerciseId: string, direction: "up" | "down") {
+    const next = weeklyPlan.map((day) => {
+      if (day.id !== dayId) {
+        return day;
+      }
+
+      const index = day.exercises.findIndex((exercise) => exercise.id === exerciseId);
+      if (index === -1) {
+        return day;
+      }
+
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= day.exercises.length) {
+        return day;
+      }
+
+      const nextExercises = [...day.exercises];
+      const [moved] = nextExercises.splice(index, 1);
+      nextExercises.splice(targetIndex, 0, moved);
+
+      return {
+        ...day,
+        exercises: nextExercises
+      };
+    });
+
     await persistWeeklyPlan(next);
   }
 
@@ -808,8 +869,9 @@ export function AppStateProvider({ children }: PropsWithChildren) {
         recordFitNotesImport,
         addWorkoutExercise,
         addWorkoutExercises,
-        updateWorkoutExercise,
-        removeWorkoutExercise,
+      updateWorkoutExercise,
+      removeWorkoutExercise,
+      reorderWorkoutExercise,
         addFoodLogEntry,
         removeFoodLogEntry,
         saveCurrentFoodAsFavorite,
