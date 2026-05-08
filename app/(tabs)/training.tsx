@@ -248,6 +248,7 @@ export default function TrainingScreen() {
   const selectedSupersets = supersetsByDay[selectedDay.id] ?? [];
 
   const allExercises = useMemo(() => [...exerciseLibrary, ...customExercises], [customExercises]);
+  const allExercisesMap = useMemo(() => new Map(allExercises.map((e) => [e.name, e])), [allExercises]);
   const selectedExercise = selectedDay.exercises.find((exercise) => exercise.id === selectedExerciseId) ?? null;
   const selectedExerciseDefinition = selectedExercise ? getExerciseDefinition(allExercises, selectedExercise.exerciseName) : null;
   const currentSessionKey = selectedExercise ? makeSessionKey(selectedDateIso, selectedExercise.exerciseName) : null;
@@ -626,6 +627,7 @@ export default function TrainingScreen() {
                 const isSelected = workoutSelection.includes(exercise.id);
                 const sessionKey = makeSessionKey(selectedDateIso, exercise.exerciseName);
                 const sets = trackSets[sessionKey] ?? [];
+                const exerciseDefinition = allExercisesMap.get(exercise.exerciseName);
 
                 return (
                   <View key={exercise.id} style={[styles.exerciseCard, isSelected && styles.exerciseCardSelected]}>
@@ -640,7 +642,8 @@ export default function TrainingScreen() {
                       onLongPress={() => toggleWorkoutSelection(exercise.id)}
                       style={styles.exerciseCardContent}
                     >
-                      <Text style={styles.exerciseCardTitle}>{exercise.exerciseName}</Text>
+                      <View style={styles.exerciseCardTextColumn}>
+                        <Text style={styles.exerciseCardTitle}>{exercise.exerciseName}</Text>
                       {!sets.length ? (
                         <Text style={styles.placeholderText}>No sets logged yet</Text>
                       ) : (
@@ -658,6 +661,14 @@ export default function TrainingScreen() {
                           </View>
                         ))
                       )}
+                      </View>
+                      <View style={styles.rowMuscleMapWrap}>
+                        <MuscleMap
+                          primaryMuscles={exerciseDefinition?.primaryMuscles ?? []}
+                          secondaryMuscles={exerciseDefinition?.secondaryMuscles ?? []}
+                          view={resolveExerciseView(exerciseDefinition?.category ?? (exercise.category as ExerciseCategory))}
+                        />
+                      </View>
                     </Pressable>
                   </View>
                 );
@@ -929,9 +940,18 @@ export default function TrainingScreen() {
                   <Text style={styles.exerciseTitle}>{exercise.name}</Text>
                   {exercise.aliases.length ? <Text style={styles.aliasText}>Also called: {exercise.aliases.join(", ")}</Text> : null}
                 </View>
-                <Text style={styles.mutedLink}>
-                  {replaceTargetExerciseId ? "Replace" : librarySelection.length ? (isSelected ? "Selected" : "Select") : "Add"}
-                </Text>
+                <View style={styles.exerciseListRight}>
+                  <View style={styles.rowMuscleMapWrap}>
+                    <MuscleMap
+                      primaryMuscles={exercise.primaryMuscles}
+                      secondaryMuscles={exercise.secondaryMuscles}
+                      view={resolveExerciseView(exercise.category)}
+                    />
+                  </View>
+                  <Text style={styles.mutedLink}>
+                    {replaceTargetExerciseId ? "Replace" : librarySelection.length ? (isSelected ? "Selected" : "Select") : "Add"}
+                  </Text>
+                </View>
               </Pressable>
             );
           })}
@@ -1330,7 +1350,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.md
   },
   exerciseCardContent: {
-    paddingVertical: spacing.md
+    paddingVertical: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md
+  },
+  exerciseCardTextColumn: {
+    flex: 1
   },
   exerciseCardTitle: {
     color: colors.text,
@@ -1660,6 +1687,11 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: spacing.xs
   },
+  exerciseListRight: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs
+  },
   exerciseTitle: {
     color: colors.text,
     fontWeight: "800",
@@ -1672,6 +1704,10 @@ const styles = StyleSheet.create({
   mutedLink: {
     color: colors.accent,
     fontWeight: "700"
+  },
+  rowMuscleMapWrap: {
+    width: 50,
+    height: 100
   },
   categoryRow: {
     flexDirection: "row",
