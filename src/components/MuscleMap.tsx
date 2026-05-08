@@ -331,21 +331,19 @@ export function MuscleMap({
   const vh = view === 'front' ? FRONT_H : BACK_H;
 
   return (
-    <View style={{ width, height }}>
+    <View style={{ width, height, position: 'relative', overflow: 'hidden' }}>
       <Image
-        source={
-          view === 'front'
-            ? require('../../assets/anatomy-front.png')
-            : require('../../assets/anatomy-back.png')
-        }
-        style={StyleSheet.absoluteFill}
+        source={view === 'front'
+          ? require('../../assets/anatomy-front.png')
+          : require('../../assets/anatomy-back.png')}
+        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
         resizeMode="stretch"
       />
       <Svg
         width={width}
         height={height}
         viewBox={`0 0 ${vw} ${vh}`}
-        style={StyleSheet.absoluteFill}
+        style={{ position: 'absolute', top: 0, left: 0 }}
       >
         {view === 'front'
           ? <FrontOverlay p={primary} s={secondary} />

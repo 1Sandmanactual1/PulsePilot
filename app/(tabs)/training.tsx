@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { Card } from "@/components/Card";
 import { MuscleMap } from "@/components/MuscleMap";
@@ -441,12 +441,25 @@ export default function TrainingScreen() {
     setDraftReps((current) => ({ ...current, [currentSessionKey]: fallbackReps }));
   }
 
-  async function deleteCurrentExercise() {
+  function deleteCurrentExercise() {
     if (!selectedExercise) return;
-    await removeWorkoutExercise(selectedDay.id, selectedExercise.id);
-    setExerciseMenuOpen(false);
-    setSelectedExerciseId(null);
-    setMode("log");
+    Alert.alert("Delete Exercise", "Remove this exercise from today's workout?", [
+      {
+        text: "Cancel",
+        style: "cancel",
+        onPress: () => setExerciseMenuOpen(false)
+      },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          await removeWorkoutExercise(selectedDay.id, selectedExercise.id);
+          setExerciseMenuOpen(false);
+          setSelectedExerciseId(null);
+          setMode("log");
+        }
+      }
+    ]);
   }
 
   function toggleSetComplete(exerciseName: string, setId: string) {
@@ -722,6 +735,8 @@ export default function TrainingScreen() {
               primaryMuscles={selectedExerciseDefinition?.primaryMuscles ?? []}
               secondaryMuscles={selectedExerciseDefinition?.secondaryMuscles ?? []}
               view={resolveExerciseView(selectedExerciseDefinition?.category ?? (selectedExercise.category as ExerciseCategory))}
+              width={70}
+              height={140}
             />
           </View>
         </View>
@@ -1427,10 +1442,12 @@ const styles = StyleSheet.create({
   },
   muscleMapWrap: {
     width: 70,
-    height: 150
+    height: 140,
+    flexShrink: 0
   },
   exerciseMenuWrap: {
-    position: "relative"
+    position: "relative",
+    zIndex: 1000
   },
   menuButton: {
     width: 36,
@@ -1450,14 +1467,16 @@ const styles = StyleSheet.create({
   menuDropdown: {
     position: "absolute",
     right: 0,
-    top: 42,
-    zIndex: 10,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
+    top: 30,
+    zIndex: 1000,
+    elevation: 10,
+    backgroundColor: "white",
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
     minWidth: 180,
-    overflow: "hidden"
+    shadowOffset: { width: 0, height: 4 }
   },
   menuItem: {
     paddingHorizontal: spacing.md,
