@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from "react-native";
 
 import { Card } from "@/components/Card";
 import { MuscleMap } from "@/components/MuscleMap";
@@ -701,19 +701,25 @@ export default function TrainingScreen() {
         <Pressable onPress={() => setExerciseMenuOpen((current) => !current)} style={styles.menuButton}>
           <Text style={styles.menuButtonText}>⋯</Text>
         </Pressable>
-        {exerciseMenuOpen ? (
-          <View style={styles.menuDropdown}>
-            <Pressable onPress={() => { setExerciseMenuOpen(false); setMode("exercise-history"); }} style={styles.menuItem}>
-              <Text style={styles.menuItemText}>View History</Text>
-            </Pressable>
-            <Pressable onPress={() => { setExerciseMenuOpen(false); setMode("exercise-graph"); }} style={styles.menuItem}>
-              <Text style={styles.menuItemText}>View Graph</Text>
-            </Pressable>
-            <Pressable onPress={deleteCurrentExercise} style={styles.menuItem}>
-              <Text style={[styles.menuItemText, styles.menuItemDanger]}>Delete Exercise</Text>
-            </Pressable>
-          </View>
-        ) : null}
+        <Modal visible={exerciseMenuOpen} transparent animationType="none" onRequestClose={() => setExerciseMenuOpen(false)}>
+          <TouchableWithoutFeedback onPress={() => setExerciseMenuOpen(false)}>
+            <View style={styles.menuModalBackdrop}>
+              <TouchableWithoutFeedback>
+                <View style={styles.menuDropdown}>
+                  <Pressable onPress={() => { setExerciseMenuOpen(false); setMode("exercise-history"); }} style={styles.menuItem}>
+                    <Text style={styles.menuItemText}>View History</Text>
+                  </Pressable>
+                  <Pressable onPress={() => { setExerciseMenuOpen(false); setMode("exercise-graph"); }} style={styles.menuItem}>
+                    <Text style={styles.menuItemText}>View Graph</Text>
+                  </Pressable>
+                  <Pressable onPress={deleteCurrentExercise} style={styles.menuItem}>
+                    <Text style={[styles.menuItemText, styles.menuItemDanger]}>Delete Exercise</Text>
+                  </Pressable>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
       </View>
     );
   }
@@ -725,20 +731,18 @@ export default function TrainingScreen() {
         <Pressable onPress={() => { setExerciseMenuOpen(false); setMode(backToMode); }} style={styles.iconButton}>
           <Text style={styles.iconButtonText}>‹</Text>
         </Pressable>
-        <View style={styles.exerciseHeaderContent}>
-          <View style={styles.exerciseTitleColumn}>
-            <Text style={styles.exerciseScreenTitle}>{selectedExercise.exerciseName}</Text>
-            <Text style={styles.exerciseHeaderSubtitle}>{selectedDay.dayLabel}</Text>
-          </View>
-          <View style={styles.muscleMapWrap}>
-            <MuscleMap
-              primaryMuscles={selectedExerciseDefinition?.primaryMuscles ?? []}
-              secondaryMuscles={selectedExerciseDefinition?.secondaryMuscles ?? []}
-              view={resolveExerciseView(selectedExerciseDefinition?.category ?? (selectedExercise.category as ExerciseCategory))}
-              width={70}
-              height={140}
-            />
-          </View>
+        <View style={styles.exerciseTitleColumn}>
+          <Text style={styles.exerciseScreenTitle}>{selectedExercise.exerciseName}</Text>
+          <Text style={styles.exerciseHeaderSubtitle}>{selectedDay.dayLabel}</Text>
+        </View>
+        <View style={styles.muscleMapWrap}>
+          <MuscleMap
+            primaryMuscles={selectedExerciseDefinition?.primaryMuscles ?? []}
+            secondaryMuscles={selectedExerciseDefinition?.secondaryMuscles ?? []}
+            view={resolveExerciseView(selectedExerciseDefinition?.category ?? (selectedExercise.category as ExerciseCategory))}
+            width={80}
+            height={160}
+          />
         </View>
         {renderExerciseMenu()}
       </View>
@@ -1420,13 +1424,6 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     paddingBottom: spacing.sm
   },
-  exerciseHeaderContent: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.md
-  },
   exerciseTitleColumn: {
     flex: 1,
     gap: spacing.xs
@@ -1441,8 +1438,9 @@ const styles = StyleSheet.create({
     fontWeight: "700"
   },
   muscleMapWrap: {
-    width: 70,
-    height: 140,
+    width: 80,
+    height: 160,
+    marginHorizontal: 8,
     flexShrink: 0
   },
   exerciseMenuWrap: {
@@ -1464,10 +1462,13 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "800"
   },
+  menuModalBackdrop: {
+    flex: 1
+  },
   menuDropdown: {
     position: "absolute",
-    right: 0,
-    top: 30,
+    right: spacing.md,
+    top: spacing.xl * 2,
     zIndex: 1000,
     elevation: 10,
     backgroundColor: "white",

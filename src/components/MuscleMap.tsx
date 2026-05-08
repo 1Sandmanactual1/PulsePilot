@@ -329,27 +329,28 @@ export function MuscleMap({
 
   const vw = view === 'front' ? FRONT_W : BACK_W;
   const vh = view === 'front' ? FRONT_H : BACK_H;
+  const aspectRatio = view === 'front' ? 247 / 597 : 233 / 597;
 
   return (
-    <View style={{ width, height, position: 'relative', overflow: 'hidden' }}>
-      <Image
-        source={view === 'front'
-          ? require('../../assets/anatomy-front.png')
-          : require('../../assets/anatomy-back.png')}
-        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
-        resizeMode="stretch"
-      />
-      <Svg
-        width={width}
-        height={height}
-        viewBox={`0 0 ${vw} ${vh}`}
-        style={{ position: 'absolute', top: 0, left: 0 }}
-      >
-        {view === 'front'
-          ? <FrontOverlay p={primary} s={secondary} />
-          : <BackOverlay  p={primary} s={secondary} />
-        }
-      </Svg>
+    <View style={{ width, height, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+      <View style={{ height: '100%', alignSelf: 'center', aspectRatio, position: 'relative' }}>
+        <Image
+          source={view === 'front'
+            ? require('../../assets/anatomy-front.png')
+            : require('../../assets/anatomy-back.png')}
+          style={StyleSheet.absoluteFill}
+          resizeMode="contain"
+        />
+        <Svg
+          viewBox={`0 0 ${vw} ${vh}`}
+          style={StyleSheet.absoluteFill}
+        >
+          {view === 'front'
+            ? <FrontOverlay p={primary} s={secondary} />
+            : <BackOverlay  p={primary} s={secondary} />
+          }
+        </Svg>
+      </View>
     </View>
   );
 }
