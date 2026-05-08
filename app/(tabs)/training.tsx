@@ -774,7 +774,7 @@ export default function TrainingScreen() {
             primaryMuscles={selectedExerciseDefinition?.primaryMuscles ?? []}
             secondaryMuscles={selectedExerciseDefinition?.secondaryMuscles ?? []}
             view={resolveExerciseView(selectedExerciseDefinition?.category ?? (selectedExercise.category as ExerciseCategory))}
-            width={80}
+            width={55}
           />
         </View>
         {renderExerciseMenu()}
@@ -1471,7 +1471,7 @@ const styles = StyleSheet.create({
     fontWeight: "700"
   },
   muscleMapWrap: {
-    width: 80,
+    width: 55,
     marginHorizontal: 8,
     flexShrink: 0
   },
