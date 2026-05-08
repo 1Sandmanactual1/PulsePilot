@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Alert, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from "react-native";
+import { Alert, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 
 import { Card } from "@/components/Card";
 import { MuscleMap } from "@/components/MuscleMap";
@@ -539,11 +539,11 @@ export default function TrainingScreen() {
     return (
       <View style={styles.dateNav}>
         <Pressable onPress={() => setSelectedDateIso(toIsoDate(previousDate))} style={styles.iconButton}>
-          <Text style={styles.iconButtonText}>‹</Text>
+          <Text style={styles.iconButtonText}>{"\u2039"}</Text>
         </Pressable>
         <Text style={styles.dateNavLabel}>{getRelativeDayLabel(selectedDate)}</Text>
         <Pressable onPress={() => setSelectedDateIso(toIsoDate(nextDate))} style={styles.iconButton}>
-          <Text style={styles.iconButtonText}>›</Text>
+          <Text style={styles.iconButtonText}>{"\u203A"}</Text>
         </Pressable>
       </View>
     );
@@ -607,7 +607,7 @@ export default function TrainingScreen() {
 
         {!selectedDay.exercises.length ? (
           <Card>
-            <Text style={styles.emptyStateText}>No exercises yet — tap Add Exercise to start</Text>
+            <Text style={styles.emptyStateText}>No exercises yet {"\u2014"} tap Add Exercise to start</Text>
             {!!previousWorkoutDay?.exercises.length && (
               <Pressable onPress={copyPreviousWorkout} style={styles.linkButton}>
                 <Text style={styles.linkButtonText}>Copy Previous Workout</Text>
@@ -669,7 +669,7 @@ export default function TrainingScreen() {
                               onPress={() => toggleSetComplete(exercise.exerciseName, set.id)}
                               style={styles.setCheckButton}
                             >
-                              <Text style={styles.setCheckButtonText}>{set.completed ? "◉" : "○"}</Text>
+                              <Text style={styles.setCheckButtonText}>{set.completed ? "\u25C9" : "\u25CB"}</Text>
                             </Pressable>
                           </View>
                         ))
@@ -697,30 +697,64 @@ export default function TrainingScreen() {
     if (!selectedExercise) return null;
 
     return (
-      <View style={styles.exerciseMenuWrap}>
-        <Pressable onPress={() => setExerciseMenuOpen((current) => !current)} style={styles.menuButton}>
-          <Text style={styles.menuButtonText}>⋯</Text>
-        </Pressable>
-        <Modal visible={exerciseMenuOpen} transparent animationType="none" onRequestClose={() => setExerciseMenuOpen(false)}>
+      <>
+        <TouchableOpacity onPress={() => setExerciseMenuOpen(true)} style={{ padding: 8 }}>
+          <Text style={{ fontSize: 20 }}>{"\u00B7\u00B7\u00B7"}</Text>
+        </TouchableOpacity>
+
+        <Modal
+          visible={exerciseMenuOpen}
+          transparent
+          animationType="none"
+          onRequestClose={() => setExerciseMenuOpen(false)}
+        >
           <TouchableWithoutFeedback onPress={() => setExerciseMenuOpen(false)}>
-            <View style={styles.menuModalBackdrop}>
+            <View style={{ flex: 1 }}>
               <TouchableWithoutFeedback>
-                <View style={styles.menuDropdown}>
-                  <Pressable onPress={() => { setExerciseMenuOpen(false); setMode("exercise-history"); }} style={styles.menuItem}>
-                    <Text style={styles.menuItemText}>View History</Text>
-                  </Pressable>
-                  <Pressable onPress={() => { setExerciseMenuOpen(false); setMode("exercise-graph"); }} style={styles.menuItem}>
-                    <Text style={styles.menuItemText}>View Graph</Text>
-                  </Pressable>
-                  <Pressable onPress={deleteCurrentExercise} style={styles.menuItem}>
-                    <Text style={[styles.menuItemText, styles.menuItemDanger]}>Delete Exercise</Text>
-                  </Pressable>
+                <View style={{
+                  position: "absolute",
+                  top: 60,
+                  right: 16,
+                  backgroundColor: "white",
+                  borderRadius: 10,
+                  paddingVertical: 8,
+                  minWidth: 180,
+                  shadowColor: "#000",
+                  shadowOpacity: 0.18,
+                  shadowRadius: 12,
+                  elevation: 20
+                }}>
+                  <TouchableOpacity onPress={() => { setExerciseMenuOpen(false); setMode("exercise-history"); }}
+                    style={{ paddingVertical: 14, paddingHorizontal: 20 }}>
+                    <Text style={{ fontSize: 15 }}>View History</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => { setExerciseMenuOpen(false); setMode("exercise-graph"); }}
+                    style={{ paddingVertical: 14, paddingHorizontal: 20 }}>
+                    <Text style={{ fontSize: 15 }}>View Graph</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => {
+                    setExerciseMenuOpen(false);
+                    Alert.alert("Delete Exercise", "Remove this exercise from today?", [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Delete",
+                        style: "destructive",
+                        onPress: async () => {
+                          await removeWorkoutExercise(selectedDay.id, selectedExercise.id);
+                          setSelectedExerciseId(null);
+                          setMode("log");
+                        }
+                      }
+                    ]);
+                  }} style={{ paddingVertical: 14, paddingHorizontal: 20 }}>
+                    <Text style={{ fontSize: 15, color: "#E53E3E" }}>Delete Exercise</Text>
+                  </TouchableOpacity>
                 </View>
               </TouchableWithoutFeedback>
             </View>
           </TouchableWithoutFeedback>
         </Modal>
-      </View>
+      </>
     );
   }
 
@@ -729,7 +763,7 @@ export default function TrainingScreen() {
     return (
       <View style={styles.exerciseHeaderBar}>
         <Pressable onPress={() => { setExerciseMenuOpen(false); setMode(backToMode); }} style={styles.iconButton}>
-          <Text style={styles.iconButtonText}>‹</Text>
+          <Text style={styles.iconButtonText}>{"\u2039"}</Text>
         </Pressable>
         <View style={styles.exerciseTitleColumn}>
           <Text style={styles.exerciseScreenTitle}>{selectedExercise.exerciseName}</Text>
@@ -786,7 +820,7 @@ export default function TrainingScreen() {
                       <Text style={styles.currentSetText}>{`${set.reps} reps`}</Text>
                     </Pressable>
                     <Pressable onPress={() => toggleSetComplete(selectedExercise.exerciseName, set.id)} style={styles.setCheckButton}>
-                      <Text style={styles.setCheckButtonText}>{set.completed ? "◉" : "○"}</Text>
+                      <Text style={styles.setCheckButtonText}>{set.completed ? "\u25C9" : "\u25CB"}</Text>
                     </Pressable>
                   </View>
                 ))
@@ -926,7 +960,7 @@ export default function TrainingScreen() {
         <Card>
           <View style={styles.simpleTopBar}>
             <Pressable onPress={() => { setLibrarySelection([]); setMode("categories"); }} style={styles.iconButton}>
-              <Text style={styles.iconButtonText}>‹</Text>
+              <Text style={styles.iconButtonText}>{"\u2039"}</Text>
             </Pressable>
             <Text style={styles.simpleTopBarTitle}>{selectedCategory}</Text>
             <View style={styles.simpleTopBarSpacer} />
@@ -985,7 +1019,7 @@ export default function TrainingScreen() {
         <Card>
           <View style={styles.simpleTopBar}>
             <Pressable onPress={() => setMode("log")} style={styles.iconButton}>
-              <Text style={styles.iconButtonText}>‹</Text>
+              <Text style={styles.iconButtonText}>{"\u2039"}</Text>
             </Pressable>
             <Text style={styles.simpleTopBarTitle}>All Exercises</Text>
             <View style={styles.simpleTopBarSpacer} />
@@ -1031,7 +1065,7 @@ export default function TrainingScreen() {
         <Card>
           <View style={styles.simpleTopBar}>
             <Pressable onPress={() => setMode("log")} style={styles.iconButton}>
-              <Text style={styles.iconButtonText}>‹</Text>
+              <Text style={styles.iconButtonText}>{"\u2039"}</Text>
             </Pressable>
             <Text style={styles.simpleTopBarTitle}>Routines</Text>
             <View style={styles.simpleTopBarSpacer} />
@@ -1070,7 +1104,7 @@ export default function TrainingScreen() {
         <Card>
           <View style={styles.simpleTopBar}>
             <Pressable onPress={() => setMode("categories")} style={styles.iconButton}>
-              <Text style={styles.iconButtonText}>‹</Text>
+              <Text style={styles.iconButtonText}>{"\u2039"}</Text>
             </Pressable>
             <Text style={styles.simpleTopBarTitle}>New Exercise</Text>
             <View style={styles.topBarActions}>
@@ -1122,7 +1156,7 @@ export default function TrainingScreen() {
         <Card>
           <View style={styles.simpleTopBar}>
             <Pressable onPress={() => setMode("log")} style={styles.iconButton}>
-              <Text style={styles.iconButtonText}>‹</Text>
+              <Text style={styles.iconButtonText}>{"\u2039"}</Text>
             </Pressable>
             <Text style={styles.simpleTopBarTitle}>Calendar</Text>
             <View style={styles.topBarActions}>
@@ -1139,11 +1173,11 @@ export default function TrainingScreen() {
             <>
               <View style={styles.calendarHeader}>
                 <Pressable onPress={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))} style={styles.iconButton}>
-                  <Text style={styles.iconButtonText}>‹</Text>
+                  <Text style={styles.iconButtonText}>{"\u2039"}</Text>
                 </Pressable>
                 <Text style={styles.cardTitle}>{getMonthTitle(calendarMonth)}</Text>
                 <Pressable onPress={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))} style={styles.iconButton}>
-                  <Text style={styles.iconButtonText}>›</Text>
+                  <Text style={styles.iconButtonText}>{"\u203A"}</Text>
                 </Pressable>
               </View>
               <View style={styles.calendarWeekHeader}>
@@ -1842,3 +1876,4 @@ const styles = StyleSheet.create({
     gap: spacing.xs
   }
 });
+
