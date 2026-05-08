@@ -8,7 +8,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { View, Image, StyleSheet } from 'react-native';
+import { View, Image } from 'react-native';
 import Svg, { Ellipse, Path, Rect, G } from 'react-native-svg';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -32,7 +32,6 @@ interface MuscleMapProps {
   secondaryMuscles: string[];
   view?: ViewSide;
   width?: number;
-  height?: number;
 }
 
 // ─── Normalizer ───────────────────────────────────────────────────────────────
@@ -322,35 +321,32 @@ export function MuscleMap({
   secondaryMuscles,
   view = 'front',
   width = 50,
-  height = 100,
 }: MuscleMapProps) {
   const primary   = useMemo(() => getRegionIds(primaryMuscles),   [primaryMuscles]);
   const secondary = useMemo(() => getRegionIds(secondaryMuscles), [secondaryMuscles]);
 
   const vw = view === 'front' ? FRONT_W : BACK_W;
   const vh = view === 'front' ? FRONT_H : BACK_H;
-  const aspectRatio = view === 'front' ? 247 / 597 : 233 / 597;
+  const h  = view === 'front' ? width * (597 / 247) : width * (597 / 233);
 
   return (
-    <View style={{ width, height, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-      <View style={{ height: '100%', alignSelf: 'center', aspectRatio, position: 'relative' }}>
-        <Image
-          source={view === 'front'
-            ? require('../../assets/anatomy-front.png')
-            : require('../../assets/anatomy-back.png')}
-          style={StyleSheet.absoluteFill}
-          resizeMode="contain"
-        />
-        <Svg
-          viewBox={`0 0 ${vw} ${vh}`}
-          style={StyleSheet.absoluteFill}
-        >
-          {view === 'front'
-            ? <FrontOverlay p={primary} s={secondary} />
-            : <BackOverlay  p={primary} s={secondary} />
-          }
-        </Svg>
-      </View>
+    <View style={{ width, height: h }}>
+      <Image
+        source={view === 'front'
+          ? require('../../assets/anatomy-front.png')
+          : require('../../assets/anatomy-back.png')}
+        style={{ position: 'absolute', top: 0, left: 0, width, height: h }}
+        resizeMode="stretch"
+      />
+      <Svg
+        viewBox={`0 0 ${vw} ${vh}`}
+        style={{ position: 'absolute', top: 0, left: 0, width, height: h }}
+      >
+        {view === 'front'
+          ? <FrontOverlay p={primary} s={secondary} />
+          : <BackOverlay  p={primary} s={secondary} />
+        }
+      </Svg>
     </View>
   );
 }
