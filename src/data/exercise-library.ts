@@ -1,4 +1,5 @@
 import { ExerciseCategory, ExerciseDefinition, ExerciseMuscleTarget } from "@/types/domain";
+import { lyftaExerciseLibrary } from "@/data/exercise-library-lyfta.generated";
 
 export const exerciseCategoryOrder: ExerciseCategory[] = [
   "Abs",
@@ -55,7 +56,7 @@ function defineExercise(
   };
 }
 
-export const exerciseLibrary: ExerciseDefinition[] = [
+const curatedExerciseLibrary: ExerciseDefinition[] = [
   defineExercise("ab-wheel-rollout", "Ab Wheel Rollout", "Abs", ["Rectus abdominis", "Transverse abdominis"], ["Obliques", "Lats"], "Anti-extension", "Builds high-tension core bracing and teaches the torso to resist spinal extension.", ["Stability Ball Rollout", "Body Saw"], ["Ab-Wheel Rollout"]),
   defineExercise("cable-crunch", "Cable Crunch", "Abs", ["Rectus abdominis"], ["Obliques"], "Spinal flexion", "Loads trunk flexion directly so the abs can be trained through a strong shortened range.", ["Crunch Machine", "Decline Crunch"]),
   defineExercise("crunch", "Crunch", "Abs", ["Rectus abdominis"], ["Obliques"], "Spinal flexion", "Simple trunk-flexion movement that biases the upper abs with minimal setup.", ["Decline Crunch", "Machine Crunch"], ["Sit-Up Crunch"]),
@@ -154,6 +155,21 @@ export const exerciseLibrary: ExerciseDefinition[] = [
   defineExercise("triceps-kickback", "Triceps Kickback", "Triceps", ["Triceps"], [], "Elbow extension", "Shortened-range isolation move that keeps tension near lockout.", ["Dumbbell Kickback"]),
   defineExercise("triceps-extension-machine", "Triceps Extension Machine", "Triceps", ["Triceps"], [], "Elbow extension", "Stable machine-based triceps isolation that is easy to progress and control.", ["Triceps Extensions (Machine)"]),
   defineExercise("v-bar-pushdown", "V-Bar Pushdown", "Triceps", ["Triceps lateral head", "Triceps medial head"], ["Long head"], "Elbow extension", "Pushdown variation with a fixed grip that feels strong and stable for heavier work.", ["V-Bar Push Down"])
+].sort((left, right) => {
+  const categoryDiff = exerciseCategoryOrder.indexOf(left.category) - exerciseCategoryOrder.indexOf(right.category);
+  if (categoryDiff !== 0) {
+    return categoryDiff;
+  }
+  return left.name.localeCompare(right.name);
+});
+
+const curatedExerciseKeys = new Set(
+  curatedExerciseLibrary.flatMap((exercise) => [exercise.name, ...exercise.aliases]).map((value) => value.trim().toLowerCase())
+);
+
+export const exerciseLibrary: ExerciseDefinition[] = [
+  ...curatedExerciseLibrary,
+  ...lyftaExerciseLibrary.filter((exercise) => !curatedExerciseKeys.has(exercise.name.trim().toLowerCase()))
 ].sort((left, right) => {
   const categoryDiff = exerciseCategoryOrder.indexOf(left.category) - exerciseCategoryOrder.indexOf(right.category);
   if (categoryDiff !== 0) {
